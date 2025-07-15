@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/utils/colors/color.dart';
+
+class FormProgressBar extends StatelessWidget {
+  final int currentStep;
+  final int totalSteps;
+  final List<String> stepTitles;
+
+  const FormProgressBar({
+    Key? key,
+    required this.currentStep,
+    required this.totalSteps,
+    required this.stepTitles,
+  }) : super(key: key);
+
+  Color _getCircleColor(int index) {
+    return index < currentStep ? appColors.formsubmit : Colors.grey.shade300;
+  }
+
+  Color _getTextColor(int index) {
+    return index == currentStep - 1 ? Colors.black : Colors.grey.shade600;
+  }
+
+  FontWeight _getTextWeight(int index) {
+    return index == currentStep - 1 ? FontWeight.bold : FontWeight.normal;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: List.generate(totalSteps * 2 - 1, (i) {
+            if (i.isEven) {
+              int index = i ~/ 2;
+              bool isCompleted = index < currentStep;
+
+              return Expanded(
+                flex: 2,
+                child: Container(
+                  alignment: Alignment.center,
+                  child: Container(
+                    height: 30,
+                    width: 30,
+                    decoration: BoxDecoration(
+                      color: _getCircleColor(index),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: isCompleted && index != currentStep - 1
+                          ? const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 18,
+                      )
+                          : Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            } else {
+              int lineIndex = (i - 1) ~/ 2;
+              bool isLineCompleted = lineIndex < currentStep - 1;
+
+              return Expanded(
+                flex: 1,
+                child: Container(
+                  alignment: Alignment.center,
+                  child: Container(
+                    height: 2,
+                    color: isLineCompleted ? appColors.formsubmit : Colors.grey.shade300,
+                  ),
+                ),
+              );
+            }
+          }),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Row for Step Titles
+        Row(
+          children: List.generate(totalSteps, (index) {
+            return Expanded(
+              flex: 3,
+              child: Container(
+                alignment: Alignment.topCenter,
+                child: Text(
+                  stepTitles[index],
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: _getTextWeight(index),
+                    color: _getTextColor(index),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,117 @@
+import 'package:flutter/material.dart';
+import '../../../../../utils/colors/color.dart';
+import 'industry_info_controller.dart';
+import 'industry_info_styles.dart';
+import '../../../shimmer/industry_info_shimmer.dart';
+
+class IndustryInfoFields {
+  final IndustryInfoController controller;
+
+  IndustryInfoFields(this.controller);
+
+  Widget buildTextField(String key, {bool isRequired = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label: IndustryInfoStyles.labels[key] ?? key, isRequired: isRequired),
+        TextFormField(
+          controller: controller.controllers[key],
+          onChanged: (_) => controller.onValidationChanged(controller.validateForm()),
+          decoration: IndustryInfoStyles.inputDecoration(
+            hintText: 'Enter ${IndustryInfoStyles.labels[key]?.toLowerCase() ?? key}',
+            isRequired: isRequired,
+          ),
+          style: const TextStyle(fontSize: 15),
+        ),
+      ],
+    );
+  }
+
+  Widget buildDropdown(String key, {bool isRequired = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label: IndustryInfoStyles.labels[key] ?? key, isRequired: isRequired),
+        DropdownButtonFormField<String>(
+          value: controller.controllers[key]!.text.isEmpty ? null : controller.controllers[key]!.text,
+          decoration: IndustryInfoStyles.inputDecoration(
+            hintText: 'Select ${IndustryInfoStyles.labels[key]?.toLowerCase()}',
+            isRequired: isRequired,
+          ),
+          items: (controller.options[key] ?? [])
+              .map((e) => DropdownMenuItem(
+            value: e.id,
+            child: Text(e.name, style: const TextStyle(fontSize: 15)),
+          ))
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            controller.controllers[key]!.text = value;
+            if (key == 'province') controller.loadDistricts(value);
+            if (key == 'district') controller.loadMunicipalities(value);
+            controller.onValidationChanged(controller.validateForm());
+          },
+          icon: const Icon(Icons.arrow_drop_down, size: 24),
+          iconEnabledColor: Colors.grey[700],
+          dropdownColor: Colors.white,
+          style: TextStyle(color: Colors.grey[800]),
+          borderRadius: BorderRadius.circular(8),
+          isExpanded: true,
+          menuMaxHeight: 300,
+        ),
+      ],
+    );
+  }
+
+  Widget buildField(String key) {
+    final isRequired = !IndustryInfoStyles.optionalFields.contains(key);
+
+    if (controller.isLoading &&
+        IndustryInfoStyles.ddKeys.contains(key) &&
+        (controller.options[key] == null || controller.options[key]!.isEmpty)) {
+      return const IndustryInfoShimmer();
+    }
+
+    return IndustryInfoStyles.ddKeys.contains(key)
+        ? buildDropdown(key, isRequired: isRequired)
+        : buildTextField(key, isRequired: isRequired);
+  }
+
+  Widget buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: IndustryInfoStyles.appColors.white_black,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel({required String label, bool isRequired = true}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            if (isRequired)
+              const TextSpan(
+                text: '* ',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+              ),
+            TextSpan(
+              text: label,
+              style: TextStyle(
+                  color: Colors.grey[800],
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

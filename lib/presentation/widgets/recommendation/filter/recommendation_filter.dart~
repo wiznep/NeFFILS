@@ -1,0 +1,249 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/utils/colors/color.dart';
+
+class RecommendationFilter extends StatefulWidget {
+  final String? selectedPaymentStatus;
+  final String? selectedOffice;
+  final String searchQuery;
+  final Function(String?) onPaymentStatusChanged;
+  final Function(String?) onOfficeChanged;
+  final Function(String) onSearchChanged;
+  final Function() onResetFilters;
+  final Function() onApplyFilters;
+
+  const RecommendationFilter({
+    Key? key,
+    required this.selectedPaymentStatus,
+    required this.selectedOffice,
+    required this.searchQuery,
+    required this.onPaymentStatusChanged,
+    required this.onOfficeChanged,
+    required this.onSearchChanged,
+    required this.onResetFilters,
+    required this.onApplyFilters,
+  }) : super(key: key);
+
+  @override
+  State<RecommendationFilter> createState() => _RecommendationFilterState();
+}
+
+class _RecommendationFilterState extends State<RecommendationFilter> {
+  late TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(text: widget.searchQuery);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header with close button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Filter Recommendations',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Search Field
+          TextFormField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              hintText: 'Search by name or application number',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                icon: const Icon(Icons.clear, color: Colors.grey),
+                onPressed: () {
+                  _searchController.clear();
+                  widget.onSearchChanged('');
+                },
+              )
+                  : null,
+            ),
+            onChanged: widget.onSearchChanged,
+          ),
+          const SizedBox(height: 20),
+
+          // Payment Status Filter
+          _buildFilterSection(
+            title: 'Payment Status',
+            child: DropdownButtonFormField<String>(
+              value: widget.selectedPaymentStatus,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text('All Status'),
+                ),
+                DropdownMenuItem(
+                  value: 'verified',
+                  child: Text('Verified'),
+                ),
+                DropdownMenuItem(
+                  value: 'not_verified',
+                  child: Text('Not Verified'),
+                ),
+              ],
+              onChanged: widget.onPaymentStatusChanged,
+              isExpanded: true,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Office Filter
+          _buildFilterSection(
+            title: 'Recommendation Office',
+            child: DropdownButtonFormField<String>(
+              value: widget.selectedOffice,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text('All Offices'),
+                ),
+                DropdownMenuItem(
+                  value: 'food_tech',
+                  child: Text('Department of Industry'),
+                ),
+                DropdownMenuItem(
+                  value: 'cottage_industry',
+                  child: Text('Office of Cottage and Small Industry'),
+                ),
+              ],
+              onChanged: widget.onOfficeChanged,
+              isExpanded: true,
+            ),
+          ),
+          const SizedBox(height: 30),
+
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                    onPressed: () {
+                      widget.onResetFilters();
+                      _searchController.clear();
+                      Navigator.pop(context);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: BorderSide(color: appColors.formsubmit),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      'RESET',
+                      style: TextStyle(
+                        color: appColors.formsubmit,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    widget.onApplyFilters();
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: appColors.formsubmit,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'APPLY',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterSection({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
+}

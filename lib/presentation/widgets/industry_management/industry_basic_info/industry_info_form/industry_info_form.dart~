@@ -1,0 +1,571 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:neffils/config/config.dart';
+import 'dart:convert';
+import '../../../../../data/services/token/token_storage_service.dart';
+import '../../../../../domain/models/dropdown_option_model.dart';
+import '../../../../../domain/models/industry/industry_basic_info.dart';
+import '../../../../../domain/repositories/industry/industry_view_repository.dart';
+import '../../../../../utils/colors/color.dart';
+import '../../../shimmer/industry_info_shimmer.dart';
+
+class IndustryInfoForm extends StatefulWidget {
+  final String? industryId;
+  final IndustryBasicInfo initialInfo;
+  final Function(bool) onValidationChanged;
+  final Function(String) onSubmitted;
+
+  const IndustryInfoForm({
+    Key? key,
+    this.industryId,
+    required this.initialInfo,
+    required this.onValidationChanged,
+    required this.onSubmitted,
+  }) : super(key: key);
+
+  @override
+  State<IndustryInfoForm> createState() => IndustryInfoFormState();
+}
+
+class IndustryInfoFormState extends State<IndustryInfoForm> {
+  late IndustryBasicInfo info;
+  final Map<String, TextEditingController> controllers = {};
+  final Map<String, List<DropdownOption>> options = {};
+  final Map<String, String> displayValues = {};
+  bool isLoading = false;
+  final IndustryViewRepository _repository = IndustryViewRepository();
+  final String _baseUrl = '$apiUrl';
+
+  final List<String> ddKeys = [
+    'industryType',
+    'industryCapital',
+    'ownProperty',
+    'country',
+    'province',
+    'district',
+    'municipality',
+  ];
+
+  final Map<String, String> labels = {
+    'industryNameNepali': 'Industry Name in Nepali (उद्योगको नाम - नेपाली)',
+    'industryNameEnglish': 'Industry Name in English',
+    'industryContactNumber': 'Industry Contact Number',
+    'industryType': 'Industry Type',
+    'ownProperty': 'Own Property?',
+    'industryCapital': 'Industry Capital',
+    'totalProperty': 'Total Property (in sq. ft)',
+    'industryCapacity': 'Industry Capacity',
+    'marketsize': 'Market Size',
+    'numberOfEmployees': 'Number of Employees',
+    'intendedProducts': 'Intended Products to be Produced',
+    'country': 'Country (देश)',
+    'province': 'Province',
+    'district': 'District',
+    'municipality': 'Municipality',
+    'wardNo': 'Ward No.',
+    'houseNo': 'House No.',
+    'nearestLandmark': 'Nearest Landmark',
+    'gPlusCode': 'G-PLUS Code',
+  };
+
+  final List<String> optionalFields = ['houseNo', 'nearestLandmark', 'gPlusCode'];
+
+  @override
+  void initState() {
+    super.initState();
+    info = widget.initialInfo;
+    _initializeControllers();
+    _loadInitialData();
+  }
+
+  void _initializeControllers() {
+    for (var key in labels.keys) {
+      controllers[key] = TextEditingController(
+        text: widget.initialInfo.toJson()[_jsonKeyFor(key)]?.toString() ?? '',
+      );
+    }
+
+    // Special handling for ownProperty
+    if (widget.initialInfo.ownProperty != null) {
+      controllers['ownProperty']!.text = widget.initialInfo.ownProperty! ? 'true' : 'false';
+    }
+  }
+
+  String _jsonKeyFor(String fieldKey) {
+    final map = {
+      'industryNameNepali': 'name_np',
+      'industryNameEnglish': 'name_en',
+      'industryContactNumber': 'contact_number',
+      'industryType': 'industry_type',
+      'industryCapital': 'industry_capital',
+      'ownProperty': 'own_property',
+      'totalProperty': 'total_property',
+      'industryCapacity': 'estimated_industry_production_capacity',
+      'marketsize': 'estimated_market_size',
+      'numberOfEmployees': 'employee_count',
+      'intendedProducts': 'intended_products',
+      'country': 'country',
+      'province': 'province',
+      'district': 'district',
+      'municipality': 'local_level',
+      'wardNo': 'ward_number',
+      'houseNo': 'house_number',
+      'nearestLandmark': 'nearest_landmark',
+      'gPlusCode': 'g_plus_code',
+    };
+    return map[fieldKey] ?? fieldKey;
+  }
+
+  Future<String> _getToken() async {
+    final token = await TokenStorageService.getAccessToken();
+    if (token == null) throw Exception('No authentication token found');
+    return token;
+  }
+
+  Future<List<DropdownOption>> _fetchOptions(String endpoint, {String params = ''}) async {
+    try {
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse('$_baseUrl/$endpoint$params'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((item) {
+          // Special handling for industry capital to use eng_label
+          if (endpoint.contains('induster-capital')) {
+            return DropdownOption(
+              id: item['id'].toString(),
+              name: item['eng_label'] ?? item['id'].toString(),
+            );
+          }
+          return DropdownOption(
+            id: item['id'].toString(),
+            name: item['name_en'] ?? item['name_np'] ?? item['name'] ?? item['id'].toString(),
+          );
+        }).toList();
+      }
+      throw Exception('Failed to load options: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('Error fetching $endpoint: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchOptionById(String endpoint, String id) async {
+    try {
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse('$_baseUrl/$endpoint$id/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching option by ID: $e');
+      return null;
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() => isLoading = true);
+    try {
+      // Load dropdown options
+      options['industryType'] = await _fetchOptions('masterdata/industry-type/');
+      options['industryCapital'] = await _fetchOptions('masterdata/induster-capital/');
+      options['country'] = await _fetchOptions('nepal-map/country/');
+
+      // Set ownProperty options
+      options['ownProperty'] = [
+        DropdownOption(id: 'true', name: 'Yes'),
+        DropdownOption(id: 'false', name: 'No'),
+      ];
+
+      // Load dependent dropdowns if initial data exists
+      if (controllers['country']!.text.isNotEmpty) {
+        options['province'] = await _fetchOptions('nepal-map/province/');
+      }
+      if (controllers['province']!.text.isNotEmpty) {
+        options['district'] = await _fetchOptions(
+            'nepal-map/district/',
+            params: '?province=${controllers['province']!.text}'
+        );
+      }
+      if (controllers['district']!.text.isNotEmpty) {
+        options['municipality'] = await _fetchOptions(
+            'nepal-map/local-levels/',
+            params: '?district=${controllers['district']!.text}'
+        );
+      }
+
+      // Set ward number options
+      options['wardNo'] = List.generate(
+        35,
+            (index) => DropdownOption(id: (index + 1).toString(), name: (index + 1).toString()),
+      );
+
+      // For edit mode, fetch display names for specific fields
+      if (widget.industryId != null) {
+        final initialInfo = await _repository.getBasicIndustryInfo(widget.industryId!);
+
+        // Fetch and set display names for industry capital
+        if (initialInfo.industryCapital.isNotEmpty) {
+          final capitalData = await _fetchOptionById(
+              'masterdata/induster-capital/',
+              initialInfo.industryCapital
+          );
+          if (capitalData != null) {
+            displayValues['industryCapital'] = capitalData['eng_label'] ?? initialInfo.industryCapital;
+          }
+        }
+
+        // Fetch and set display names for municipality
+        if (initialInfo.municipality.isNotEmpty) {
+          final municipalityData = await _fetchOptionById(
+              'nepal-map/local-levels/',
+              initialInfo.municipality
+          );
+          if (municipalityData != null) {
+            displayValues['municipality'] = municipalityData['name_en'] ??
+                municipalityData['name_np'] ??
+                initialInfo.municipality;
+          }
+        }
+
+        // Set other dropdown values
+        _setDropdownValue('industryType', initialInfo.industryType);
+        _setDropdownValue('country', initialInfo.country);
+        _setDropdownValue('province', initialInfo.province);
+        _setDropdownValue('district', initialInfo.district);
+      }
+    } catch (e) {
+      debugPrint('Error loading initial data: $e');
+    } finally {
+      setState(() => isLoading = false);
+      widget.onValidationChanged(_validateForm());
+    }
+  }
+
+  void _setDropdownValue(String field, String? value) {
+    if (value == null || value.isEmpty) return;
+
+    final option = options[field]?.firstWhere(
+          (opt) => opt.id == value,
+      orElse: () => DropdownOption(id: value, name: value),
+    );
+
+    if (option != null) {
+      controllers[field]!.text = option.id;
+    }
+  }
+
+  Future<void> _loadDistricts(String provinceId) async {
+    setState(() {
+      isLoading = true;
+      controllers['district']!.text = '';
+      controllers['municipality']!.text = '';
+      options['district'] = [];
+      options['municipality'] = [];
+    });
+
+    try {
+      options['district'] = await _fetchOptions(
+          'nepal-map/district/',
+          params: '?province=$provinceId'
+      );
+    } catch (e) {
+      debugPrint('Error loading districts: $e');
+    } finally {
+      setState(() => isLoading = false);
+      widget.onValidationChanged(_validateForm());
+    }
+  }
+
+  Future<void> _loadMunicipalities(String districtId) async {
+    setState(() {
+      isLoading = true;
+      controllers['municipality']!.text = '';
+      options['municipality'] = [];
+    });
+
+    try {
+      options['municipality'] = await _fetchOptions(
+          'nepal-map/local-levels/',
+          params: '?district=$districtId'
+      );
+    } catch (e) {
+      debugPrint('Error loading municipalities: $e');
+    } finally {
+      setState(() => isLoading = false);
+      widget.onValidationChanged(_validateForm());
+    }
+  }
+
+  bool _validateForm() {
+    for (var key in labels.keys) {
+      if (optionalFields.contains(key)) continue;
+      if (controllers[key]?.text.isEmpty ?? true) return false;
+    }
+    return true;
+  }
+
+  Future<void> submit() async {
+    if (!_validateForm()) {
+      widget.onValidationChanged(false);
+      return;
+    }
+
+    setState(() => isLoading = true);
+    try {
+      final updatedInfo = IndustryBasicInfo(
+        id: widget.industryId ?? info.id,
+        nameEn: controllers['industryNameEnglish']!.text,
+        nameNp: controllers['industryNameNepali']!.text,
+        contactNumber: controllers['industryContactNumber']!.text,
+        industryType: controllers['industryType']!.text,
+        industryCapital: controllers['industryCapital']!.text,
+        ownProperty: controllers['ownProperty']!.text == 'true',
+        totalProperty: controllers['totalProperty']!.text,
+        industryCapacity: controllers['industryCapacity']!.text,
+        marketSize: controllers['marketsize']!.text,
+        numberOfEmployees: int.tryParse(controllers['numberOfEmployees']!.text) ?? 0,
+        intendedProducts: controllers['intendedProducts']!.text,
+        country: controllers['country']!.text,
+        province: controllers['province']!.text,
+        district: controllers['district']!.text,
+        municipality: controllers['municipality']!.text,
+        wardNo: controllers['wardNo']!.text,
+        houseNo: controllers['houseNo']!.text,
+        nearestLandmark: controllers['nearestLandmark']!.text,
+        gPlusCode: controllers['gPlusCode']!.text,
+      );
+
+      if (updatedInfo.id != null) {
+        await _repository.updateBasicIndustryInfo(updatedInfo.id!, updatedInfo);
+        widget.onSubmitted(updatedInfo.id!);
+      } else {
+        final token = await _getToken();
+        final response = await http.post(
+          Uri.parse('$_baseUrl/industry/industry/'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(updatedInfo.toJson()),
+        );
+
+        if (response.statusCode == 201) {
+          final responseData = jsonDecode(response.body);
+          widget.onSubmitted(responseData['id'].toString());
+        } else {
+          throw Exception('Failed to create industry: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Submission failed: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  InputDecoration _inputDecoration({String? hintText, bool isRequired = true}) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(color: Colors.grey[600]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[400]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: appColors.text_field, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[400]!),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _buildLabel({required String label, bool isRequired = true}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            if (isRequired)
+              const TextSpan(
+                text: '* ',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+              ),
+            TextSpan(
+              text: label,
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String key, {bool isRequired = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label: labels[key] ?? key, isRequired: isRequired),
+        TextFormField(
+          controller: controllers[key],
+          onChanged: (_) => widget.onValidationChanged(_validateForm()),
+          decoration: _inputDecoration(
+            hintText: 'Enter ${labels[key]?.toLowerCase() ?? key}',
+            isRequired: isRequired,
+          ),
+          style: const TextStyle(fontSize: 15),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown(String key, {bool isRequired = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label: labels[key] ?? key, isRequired: isRequired),
+        DropdownButtonFormField<String>(
+          value: controllers[key]!.text.isEmpty ? null : controllers[key]!.text,
+          decoration: _inputDecoration(
+            hintText: 'Select ${labels[key]?.toLowerCase()}',
+            isRequired: isRequired,
+          ),
+          items: (options[key] ?? [])
+              .map((e) => DropdownMenuItem(
+            value: e.id,
+            child: Text(e.name, style: const TextStyle(fontSize: 15)),
+          ))
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              controllers[key]!.text = value;
+              displayValues.remove(key); // Clear display value when selecting new option
+              if (key == 'province') _loadDistricts(value);
+              if (key == 'district') _loadMunicipalities(value);
+              widget.onValidationChanged(_validateForm());
+            });
+          },
+          icon: const Icon(Icons.arrow_drop_down, size: 24),
+          iconEnabledColor: Colors.grey[700],
+          dropdownColor: Colors.white,
+          style: TextStyle(color: Colors.grey[800]),
+          borderRadius: BorderRadius.circular(8),
+          isExpanded: true,
+          menuMaxHeight: 300,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildField(String key) {
+    final isRequired = !optionalFields.contains(key);
+
+    if (isLoading && ddKeys.contains(key) && (options[key] == null || options[key]!.isEmpty)) {
+      return IndustryInfoShimmer();
+    }
+
+    return ddKeys.contains(key)
+        ? _buildDropdown(key, isRequired: isRequired)
+        : _buildTextField(key, isRequired: isRequired);
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: appColors.white_black,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return isLoading && options.isEmpty
+        ? const IndustryInfoShimmer()
+        : SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildField('industryNameNepali'),
+          const SizedBox(height: 16),
+          _buildField('industryNameEnglish'),
+          const SizedBox(height: 16),
+          _buildField('industryContactNumber'),
+          const SizedBox(height: 16),
+          _buildField('industryType'),
+          const SizedBox(height: 16),
+          _buildField('ownProperty'),
+          const SizedBox(height: 16),
+          _buildField('industryCapital'),
+          const SizedBox(height: 16),
+          _buildField('totalProperty'),
+          const SizedBox(height: 16),
+          _buildField('industryCapacity'),
+          const SizedBox(height: 16),
+          _buildField('marketsize'),
+          const SizedBox(height: 16),
+          _buildField('numberOfEmployees'),
+          const SizedBox(height: 16),
+          _buildField('intendedProducts'),
+          _buildSectionHeader('Industry Address (उद्योगको ठेगाना)'),
+          _buildField('country'),
+          const SizedBox(height: 16),
+          _buildField('province'),
+          const SizedBox(height: 16),
+          _buildField('district'),
+          const SizedBox(height: 16),
+          _buildField('municipality'),
+          const SizedBox(height: 16),
+          _buildField('wardNo'),
+          const SizedBox(height: 16),
+          _buildField('houseNo'),
+          const SizedBox(height: 16),
+          _buildField('gPlusCode'),
+          const SizedBox(height: 16),
+          _buildField('nearestLandmark'),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (var controller in controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+}

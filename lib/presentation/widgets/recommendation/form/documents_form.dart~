@@ -1,0 +1,554 @@
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:neffils/utils/colors/color.dart';
+
+class DocumentsForm extends StatefulWidget {
+  final Map<String, dynamic> initialData;
+  final Function(Map<String, dynamic>) onChanged;
+  final Function(bool) onValidationChanged;
+
+  const DocumentsForm({
+    Key? key,
+    required this.initialData,
+    required this.onChanged,
+    required this.onValidationChanged,
+  }) : super(key: key);
+
+  @override
+  State<DocumentsForm> createState() => _DocumentsFormState();
+}
+
+class _DocumentsFormState extends State<DocumentsForm> {
+  late DocumentsFormController _formController;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _formController = DocumentsFormController(
+      onValidationChanged: widget.onValidationChanged,
+      onChanged: widget.onChanged,
+      initialData: widget.initialData,
+    );
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() => _isLoading = true);
+    try {
+      await _formController.loadInitialData();
+    } catch (e) {
+      debugPrint('Error loading initial data: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey[800],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileSizeNotes() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Note:',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '• Max File Size 5 MB (for most documents)',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        Text(
+          '• Max File Size 20 MB (for Industry Layout)',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(appColors.formsubmit),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Industry for Recommendation',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Select Industry for recommendation',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _formController.buildIndustryDropdown(),
+          const SizedBox(height: 24),
+          _buildSectionHeader('Required Documents'),
+          ..._formController.buildRequiredDocuments(),
+          const SizedBox(height: 24),
+          _buildSectionHeader('Additional Documents'),
+          Text(
+            'Add any extra documents if needed',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._formController.buildAdditionalDocuments(),
+          _formController.buildAddDocumentButton(),
+          const SizedBox(height: 24),
+          _buildFileSizeNotes(),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _formController.dispose();
+    super.dispose();
+  }
+}
+
+class DocumentsFormController {
+  final Function(bool) onValidationChanged;
+  final Function(Map<String, dynamic>) onChanged;
+  final Map<String, dynamic>? initialData;
+
+  final List<Map<String, dynamic>> _requiredDocuments = [];
+  final List<Map<String, dynamic>> _additionalDocuments = [];
+  final Map<String, TextEditingController> _documentNameControllers = {};
+  String? _selectedIndustryId;
+  String? _selectedIndustryName;
+  final List<Map<String, String>> _industries = [
+
+  ];
+
+  DocumentsFormController({
+    required this.onValidationChanged,
+    required this.onChanged,
+    this.initialData,
+  });
+
+  Future<void> loadInitialData() async {
+    // Initialize required documents
+    _requiredDocuments.addAll([
+      {
+        'name': 'Technical Proposal',
+        'key': 'technical_proposal',
+        'file': initialData?['technical_proposal'],
+        'maxSize': 5,
+      },
+      {
+        'name': 'Registration Application Form',
+        'key': 'registration_form',
+        'file': initialData?['registration_form'],
+        'maxSize': 5,
+      },
+      {
+        'name': 'Letter of Administration',
+        'key': 'administration_letter',
+        'file': initialData?['administration_letter'],
+        'maxSize': 5,
+      },
+      {
+        'name': 'Proposed Industry Layout',
+        'key': 'industry_layout',
+        'file': initialData?['industry_layout'],
+        'maxSize': 20,
+      },
+    ]);
+
+    // Initialize additional documents
+    if (initialData?['additional_documents'] != null) {
+      for (var doc in initialData!['additional_documents']) {
+        _additionalDocuments.add({
+          'name': doc['name'] ?? '',
+          'key': 'additional_${_additionalDocuments.length}',
+          'file': doc['file'],
+          'maxSize': 5,
+          'controller': TextEditingController(text: doc['name'] ?? ''),
+        });
+      }
+    }
+
+    // Set selected industry if exists in initial data
+    if (initialData?['industry_id'] != null) {
+      _selectedIndustryId = initialData!['industry_id'];
+      _selectedIndustryName = initialData!['industry_name'];
+    }
+
+    onValidationChanged(validateForm());
+    _updateParentData();
+  }
+
+  Widget buildIndustryDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Select Industry*'),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+            color: Colors.white,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedIndustryId,
+              isExpanded: true,
+              hint: Text(
+                'Select industry',
+                style: TextStyle(color: Colors.grey[600], fontSize: 15),
+              ),
+              items: _industries.map((industry) {
+                return DropdownMenuItem<String>(
+                  value: industry['id'],
+                  child: Text(
+                    industry['name']!,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                );
+              }).toList(),
+              onChanged: (String? value) {
+                if (value != null) {
+                  _selectedIndustryId = value;
+                  _selectedIndustryName = _industries
+                      .firstWhere((ind) => ind['id'] == value)['name'];
+                  onValidationChanged(validateForm());
+                  _updateParentData();
+                }
+              },
+              icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+              dropdownColor: Colors.white,
+              style: TextStyle(color: Colors.grey[800]),
+              borderRadius: BorderRadius.circular(8),
+              menuMaxHeight: 300,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> buildRequiredDocuments() {
+    return _requiredDocuments.map((doc) => _buildDocumentCard(doc)).toList();
+  }
+
+  List<Widget> buildAdditionalDocuments() {
+    return _additionalDocuments.asMap().entries.map((entry) {
+      return _buildDocumentCard(
+        entry.value,
+        isAdditional: true,
+        index: entry.key,
+      );
+    }).toList();
+  }
+
+  Widget buildAddDocumentButton() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text('Add Document'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: appColors.formsubmit,
+          side: BorderSide(color: appColors.formsubmit),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          backgroundColor: Colors.white,
+        ),
+        onPressed: _addAdditionalDocument,
+      ),
+    );
+  }
+
+  Widget _buildDocumentCard(Map<String, dynamic> document, {bool isAdditional = false, int? index}) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isAdditional)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: document['controller'],
+                      onChanged: (value) {
+                        document['name'] = value;
+                        onValidationChanged(validateForm());
+                        _updateParentData();
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Document Name',
+                        labelStyle: TextStyle(color: Colors.grey[600]),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: appColors.formsubmit, width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 14),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete_outline, color: Colors.grey[600]),
+                    onPressed: () => _removeAdditionalDocument(index!),
+                  ),
+                ],
+              ),
+            if (isAdditional) const SizedBox(height: 12),
+            Text(
+              isAdditional ? 'Upload Document' : document['name'],
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildCleanFileUploadField(document),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCleanFileUploadField(Map<String, dynamic> document) {
+    return GestureDetector(
+      onTap: () => _pickFile(document),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: document['file'] != null
+                ? appColors.formsubmit
+                : Colors.grey.shade300,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.upload_file,
+              color: document['file'] != null
+                  ? appColors.formsubmit
+                  : Colors.grey[600],
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    document['file'] != null
+                        ? document['file']['name']
+                        : 'Click to select file',
+                    style: TextStyle(
+                      color: Colors.grey[800],
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (document['file'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${document['file']['size']} MB',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (document['file'] != null)
+              IconButton(
+                icon: Icon(Icons.close, size: 20, color: Colors.grey[600]),
+                onPressed: () {
+                  document['file'] = null;
+                  onValidationChanged(validateForm());
+                  _updateParentData();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFile(Map<String, dynamic> document) async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (result != null) {
+        final fileSize = result.files.single.size / (1024 * 1024); // in MB
+        final maxSize = document['maxSize'] ?? 5;
+
+        if (fileSize > maxSize) {
+          // In a real app, show a snackbar with this error
+          debugPrint('File size exceeds maximum limit of ${maxSize}MB');
+          return;
+        }
+
+        document['file'] = {
+          'path': result.files.single.path,
+          'name': result.files.single.name,
+          'size': fileSize.toStringAsFixed(2),
+        };
+        onValidationChanged(validateForm());
+        _updateParentData();
+      }
+    } catch (e) {
+      debugPrint('Error picking file: $e');
+    }
+  }
+
+  void _addAdditionalDocument() {
+    final key = 'additional_${_additionalDocuments.length}';
+    _additionalDocuments.add({
+      'name': '',
+      'key': key,
+      'file': null,
+      'maxSize': 5,
+      'controller': TextEditingController(),
+    });
+    onValidationChanged(validateForm());
+    _updateParentData();
+  }
+
+  void _removeAdditionalDocument(int index) {
+    _additionalDocuments[index]['controller'].dispose();
+    _additionalDocuments.removeAt(index);
+    onValidationChanged(validateForm());
+    _updateParentData();
+  }
+
+  bool validateForm() {
+    // Validate industry is selected
+    if (_selectedIndustryId == null) return false;
+
+    // Validate required documents
+    for (var doc in _requiredDocuments) {
+      if (doc['file'] == null) return false;
+    }
+
+    // Validate additional documents
+    for (var doc in _additionalDocuments) {
+      if (doc['name'].isEmpty && doc['file'] != null) return false;
+      if (doc['name'].isNotEmpty && doc['file'] == null) return false;
+    }
+
+    return true;
+  }
+
+  void _updateParentData() {
+    final data = {
+      'industry_id': _selectedIndustryId,
+      'industry_name': _selectedIndustryName,
+      'documents': _requiredDocuments.map((doc) => {
+        'name': doc['name'],
+        'key': doc['key'],
+        'file': doc['file'],
+      }).toList(),
+      'additional_documents': _additionalDocuments.map((doc) => {
+        'name': doc['name'],
+        'key': doc['key'],
+        'file': doc['file'],
+      }).toList(),
+    };
+    onChanged(data);
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: Colors.grey[800],
+        ),
+      ),
+    );
+  }
+
+  void dispose() {
+    for (var doc in _additionalDocuments) {
+      doc['controller'].dispose();
+    }
+  }
+}

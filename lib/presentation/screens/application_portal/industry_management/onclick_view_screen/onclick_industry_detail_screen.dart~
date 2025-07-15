@@ -1,0 +1,146 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/utils/colors/color.dart';
+import '../../../../domain/models/industry/industry_view_model.dart';
+import '../../../../domain/repositories/industry/industry_view_repository.dart';
+import '../../../widgets/error_view/error_view.dart';
+import '../../../widgets/loading/loading_widget.dart';
+
+class IndustryDetailScreen extends StatefulWidget {
+  final String industryId;
+
+  const IndustryDetailScreen({super.key, required this.industryId});
+
+  @override
+  State<IndustryDetailScreen> createState() => _IndustryDetailScreenState();
+}
+
+class _IndustryDetailScreenState extends State<IndustryDetailScreen> {
+  final IndustryViewRepository _repository = IndustryViewRepository();
+  late Future<IndustryDetail> _industryDetailFuture;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchIndustryDetail();
+  }
+
+  Future<void> _fetchIndustryDetail() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      _industryDetailFuture = _repository.getIndustryDetail(widget.industryId);
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: appColors.formsubmit,
+        foregroundColor: Colors.white,
+        title: const Text('Industry Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+      ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: LoadingWidget());
+    }
+
+    if (_errorMessage != null) {
+      return ErrorStateWidget(
+        message: 'Failed to load industry details.\nPlease try again.',
+        onRetry: _fetchIndustryDetail,
+      );
+    }
+
+    return FutureBuilder<IndustryDetail>(
+      future: _industryDetailFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: LoadingWidget());
+        }
+
+        if (snapshot.hasError) {
+          return ErrorStateWidget(
+            message: 'Failed to load industry details.\nPlease try again.',
+            onRetry: _fetchIndustryDetail,
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(child: Text('No data available'));
+        }
+
+        final industry = snapshot.data!;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDetailRow('Name (English)', industry.nameEn),
+              _buildDetailRow('Name (Nepali)', industry.nameNp),
+              _buildDetailRow('Industry Type', industry.industryType),
+              _buildDetailRow('Industry Capital', industry.industryCapital),
+              _buildDetailRow('Contact Number', industry.contactNumber),
+              _buildDetailRow('Total Property', industry.totalProperty),
+              _buildDetailRow('Own Property', industry.ownProperty ? 'Yes' : 'No'),
+              _buildDetailRow('Employee Count', industry.employeeCount.toString()),
+              _buildDetailRow('Intended Products', industry.intendedProducts),
+              _buildDetailRow('Estimated Production Capacity', industry.estimatedIndustryProductionCapacity),
+              _buildDetailRow('Estimated Market Size', industry.estimatedMarketSize),
+              const SizedBox(height: 16),
+              const Text('Address Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              _buildDetailRow('Country', industry.country),
+              _buildDetailRow('Province', industry.province),
+              _buildDetailRow('District', industry.district),
+              _buildDetailRow('Local Level', industry.localLevel),
+              _buildDetailRow('Ward Number', industry.wardNumber),
+              _buildDetailRow('House Number', industry.houseNumber),
+              _buildDetailRow('Nearest Landmark', industry.nearestLandmark),
+              _buildDetailRow('Google Plus Code', industry.gPlusCode),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 150,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(value.isNotEmpty ? value : 'N/A'),
+          ),
+        ],
+      ),
+    );
+  }
+}

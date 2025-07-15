@@ -1,0 +1,73 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/presentation/screens/application_portal/industry_management/view_Industry_management_screen.dart';
+import 'package:provider/provider.dart';
+import 'data/providers/auth_providers.dart';
+import 'presentation/screens/home_screen/home_navbar_screen.dart';
+import 'presentation/screens/auth/login_screen.dart';
+
+void main() {
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeAuth();
+    });
+  }
+
+  Future<void> _initializeAuth() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.initialize(); // Load saved tokens & user data
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver], // Required for RouteObserver
+      home: _isLoading
+          ? const LoadingScreen()
+          : authProvider.isAuthenticated
+          ? HomeNavbarScreen(username: authProvider.currentUser!.username)
+          : const LoginScreen(),
+    );
+  }
+}
+
+class LoadingScreen extends StatelessWidget {
+  const LoadingScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: CircularProgressIndicator()
+      ),
+    );
+  }
+}

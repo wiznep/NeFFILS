@@ -1,0 +1,122 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/utils/colors/color.dart';
+
+class EditPersonalDetailsForm extends StatefulWidget {
+  const EditPersonalDetailsForm({super.key});
+
+  @override
+  State<EditPersonalDetailsForm> createState() => _EditPersonalDetailsFormState();
+}
+
+class _EditPersonalDetailsFormState extends State<EditPersonalDetailsForm> {
+  final TextEditingController _fullNameController =
+  TextEditingController(text: 'SANDIP BHANDARI');
+  final TextEditingController _emailController =
+  TextEditingController(text: 'bhandarisandip882@gmail.com');
+  final TextEditingController _phoneController =
+  TextEditingController(text: '9860311353');
+
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: ListView(
+          children: [
+            _buildTextField('Full Name', _fullNameController),
+            const SizedBox(height: 16),
+            _buildTextField('Email', _emailController, isEmail: true),
+            const SizedBox(height: 16),
+            _buildTextField('Phone Number', _phoneController, isPhone: true),
+            const SizedBox(height: 32),
+            _buildActionButtons(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller,
+      {bool isEmail = false, bool isPhone = false}) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        suffixIcon: Icon(
+          Icons.edit,
+          color: appColors.formsubmit,
+          size: 20,
+        ),
+      ),
+      keyboardType: isEmail
+          ? TextInputType.emailAddress
+          : isPhone
+          ? TextInputType.phone
+          : TextInputType.text,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return '$label is required';
+        }
+        if (isEmail && !RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
+          return 'Enter a valid email';
+        }
+        if (isPhone && value.length < 10) {
+          return 'Enter a valid phone number';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: appColors.formsubmit,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: _submitForm,
+            child: const Text(
+              'Submit',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      // Save logic goes here
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Details updated successfully')),
+      );
+      Navigator.pop(context);
+    }
+  }
+}

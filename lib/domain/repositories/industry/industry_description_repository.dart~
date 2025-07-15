@@ -1,0 +1,86 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+import '../../../data/services/token/token_storage_service.dart';
+import '../../models/industry/industry_basic_info.dart';
+import '../../models/industry/industry_optdetails.dart';
+import '../../models/industry/industry_view_model.dart';
+
+class IndustryRepository {
+  static const String _baseUrl = 'https://dev-neffils.kantipurinfotech.com/api';
+  final http.Client client;
+
+  IndustryRepository({required this.client});
+
+  // Get all industries (from your existing IndustryViewRepository)
+  Future<List<IndustryView>> getAllIndustries() async {
+    final token = await TokenStorageService.getAccessToken();
+    if (token == null) {
+      throw Exception('No authentication token found');
+    }
+
+    final response = await client.get(
+      Uri.parse('$_baseUrl/industry/industry/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final results = data['results'] as List;
+      return results.map((json) => IndustryView.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load industries: ${response.statusCode}');
+    }
+  }
+
+  // Create new industry (for your IndustryInfoForm)
+  Future<String> createIndustry(Map<String, dynamic> data) async {
+    final token = await TokenStorageService.getAccessToken();
+    if (token == null) {
+      throw Exception('Authentication token not found');
+    }
+
+    final response = await client.post(
+      Uri.parse('$_baseUrl/industry/industry/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 201) {
+      final responseData = jsonDecode(response.body);
+      return responseData['id'] as String;
+    } else {
+      throw Exception('Failed to create industry: ${response.statusCode}');
+    }
+  }
+
+  // Update operational details (for your DescriptionForm)
+  Future<void> updateOperationalDetails({
+    required String industryId,
+    required IndustryOperationalDetails details,
+  }) async {
+    final token = await TokenStorageService.getAccessToken();
+    if (token == null) {
+      throw Exception('Authentication token not found');
+    }
+
+    final response = await client.put(
+      Uri.parse('$_baseUrl/industry/industry/$industryId/update-operational/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(details.toJson()),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update operational details: ${response.statusCode}');
+    }
+  }
+}

@@ -1,0 +1,35 @@
+import 'package:flutter/material.dart';
+
+import '../../../utils/colors/color.dart';
+
+class RecommendationScreen extends StatefulWidget {
+  const RecommendationScreen({super.key});
+
+  @override
+  State<RecommendationScreen> createState() => _RecommendationScreenState();
+}
+
+class _RecommendationScreenState extends State<RecommendationScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.popUntil(context, (route) => route.isFirst);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: appColors.formsubmit,
+          foregroundColor: Colors.white,
+          title: const Text('All Recommendations'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}

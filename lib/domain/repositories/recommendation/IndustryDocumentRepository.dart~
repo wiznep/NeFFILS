@@ -1,0 +1,60 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../../data/services/token/token_storage_service.dart';
+import '../../models/recommendation/IndustryDocument.dart';
+
+class IndustryDocumentRepository {
+  final String _baseUrl = 'https://dev-neffils.kantipurinfotech.com/api/industry/industry';
+
+  // GET method to fetch documents
+  Future<List<IndustryDocument>> getDocuments(String industryId) async {
+    final accessToken = await TokenStorageService.getAccessToken();
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/$industryId/upload-documents/'),
+      headers: {
+        'accept': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList.map((json) => IndustryDocument.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load documents. Status code: ${response.statusCode}');
+    }
+  }
+
+  // PATCH method to update a document
+  Future<IndustryDocument> updateDocument({
+    required String industryId,
+    required String documentId,
+    required String code,
+    required String filePath,
+  }) async {
+    final accessToken = await TokenStorageService.getAccessToken();
+
+    var request = http.MultipartRequest(
+      'PATCH',
+      Uri.parse('$_baseUrl/$industryId/upload-documents/$documentId/'),
+    );
+
+    request.headers.addAll({
+      'accept': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+    });
+
+    request.fields['code'] = code;
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    final response = await request.send();
+    final responseData = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      return IndustryDocument.fromJson(json.decode(responseData));
+    } else {
+      throw Exception('Failed to update document. Status code: ${response.statusCode} - $responseData');
+    }
+  }
+}

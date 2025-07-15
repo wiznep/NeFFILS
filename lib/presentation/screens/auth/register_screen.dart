@@ -1,0 +1,37 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/data/repositories/register_repository_impl.dart';
+import '../../widgets/register_form_widget.dart';
+import '../../../data/services/register_auth_api_service.dart';
+
+class RegisterScreen extends StatelessWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 10),
+              Image.asset('assets/images/logo/mainlogo.png', height: 80),
+              const SizedBox(height: 10),
+              const Text(
+                "Create New Industry Account. ( नयाँ उद्योग खाता सिर्जना गर्नुहोस्। )",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 15),
+              RegisterForm(
+                authRepository: RegisterRepositoryImpl(RegisterApiService()),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,47 @@
+// lib/data/providers/profile_provider.dart
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+class ProfileProvider with ChangeNotifier {
+  String _fullName = '';
+  String _email = '';
+  String _phone = '';
+
+  String get fullName => _fullName;
+  String get email => _email;
+  String get phone => _phone;
+
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  Future<void> fetchUserProfile() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://dev-neffils.kantipurinfotech.com/api/account/user-profile-update/'),
+        headers: {
+          'Content-Type': 'application/json',
+          // Add authorization headers if required
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _fullName = data['full_name_en'] ?? '';
+        _email = data['email'] ?? '';
+        _phone = data['phone_number'] ?? '';
+      } else {
+        debugPrint('Failed to load profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching profile: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+}

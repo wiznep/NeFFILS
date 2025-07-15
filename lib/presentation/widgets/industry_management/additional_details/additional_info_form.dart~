@@ -1,0 +1,556 @@
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+
+class AdditionalInfoForm extends StatefulWidget {
+  const AdditionalInfoForm({Key? key}) : super(key: key);
+
+  @override
+  _AdditionalInfoFormState createState() => _AdditionalInfoFormState();
+}
+
+class _AdditionalInfoFormState extends State<AdditionalInfoForm> {
+  String? _hasLicense = 'No';
+  String? _isPvtLtd = 'No';
+  String? _isBranch = 'No';
+  String? _isBrandRegistered = 'No';
+
+  final TextEditingController _licenseNumberController = TextEditingController();
+  final TextEditingController _registrationNumberController = TextEditingController();
+  final TextEditingController _panVatController = TextEditingController();
+  String? _selectedLicensingOffice;
+  DateTime? _issueDate;
+  DateTime? _expiryDate;
+
+  // Document files state
+  final Map<String, PlatformFile?> _documentFiles = {
+    'license_front': null,
+    'license_back': null,
+    'industry_registration': null,
+    'letter_of_administration': null,
+    'company_regulation': null,
+    'updated_share_cost': null,
+    'brand_registration': null,
+    'technical_proposal': null,
+    'registration_form': null,
+    'technical_details_scheme': null,
+    'pan_vat_doc': null,
+    'proposed_industry_layout': null,
+    'trademark_registration': null,
+  };
+
+  final List<String> _licensingOffices = [
+    'Office A',
+    'Office B',
+    'Office C',
+    'Office D',
+  ];
+
+  @override
+  void dispose() {
+    _licenseNumberController.dispose();
+    _registrationNumberController.dispose();
+    _panVatController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate(BuildContext context, bool isIssueDate) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isIssueDate) {
+          _issueDate = picked;
+        } else {
+          _expiryDate = picked;
+        }
+      });
+    }
+  }
+
+  Future<void> _pickFile(String documentKey, int maxSizeMB) async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (result != null) {
+        final file = result.files.first;
+        final fileSizeMB = file.size / (1024 * 1024);
+
+        if (fileSizeMB > maxSizeMB) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('File size exceeds maximum limit of ${maxSizeMB}MB'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        setState(() {
+          _documentFiles[documentKey] = file;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking file: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget _buildLabel(String text, {bool isRequired = true}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: RichText(
+        text: TextSpan(
+          text: text,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+          children: isRequired ? [
+            const TextSpan(
+              text: ' *',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          ] : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileUploadField({
+    required String label,
+    required String documentKey,
+    required int maxSizeMB,
+    required String hintText,
+    bool isRequired = true,
+  }) {
+    final file = _documentFiles[documentKey];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label, isRequired: isRequired),
+        const SizedBox(height: 4),
+        GestureDetector(
+          onTap: () => _pickFile(documentKey, maxSizeMB),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: file != null ? Colors.blue : Colors.grey.shade300,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.upload_file,
+                  color: file != null ? Colors.blue : Colors.grey.shade500,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        file != null ? file.name : hintText,
+                        style: TextStyle(
+                          color: file != null ? Colors.black87 : Colors.grey.shade600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (file != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '${(file.size / (1024 * 1024)).toStringAsFixed(2)} MB',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (file != null)
+                  IconButton(
+                    icon: Icon(Icons.close, size: 20, color: Colors.grey.shade600),
+                    onPressed: () {
+                      setState(() {
+                        _documentFiles[documentKey] = null;
+                      });
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Max file size: ${maxSizeMB}MB',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildDropdownFormField({
+    required String label,
+    required List<String> items,
+    required String? value,
+    required Function(String?) onChanged,
+    bool isRequired = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label, isRequired: isRequired),
+        const SizedBox(height: 4),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              isExpanded: true,
+              hint: const Text('Select option'),
+              items: items.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: onChanged,
+              icon: Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+              dropdownColor: Colors.white,
+              style: const TextStyle(color: Colors.black87),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildDateField(String label, DateTime? date, Function() onTap, {bool isRequired = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label, isRequired: isRequired),
+        const SizedBox(height: 4),
+        GestureDetector(
+          onTap: onTap,
+          child: AbsorbPointer(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      date != null
+                          ? '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}'
+                          : 'Select date',
+                      style: TextStyle(
+                        color: date != null ? Colors.black87 : Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.calendar_today, size: 20, color: Colors.grey.shade600),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildTextFormField({
+    required String label,
+    required TextEditingController controller,
+    String? hintText,
+    bool isRequired = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label, isRequired: isRequired),
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hintText,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String text) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Divider(height: 1, color: Colors.grey),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // License Question
+          _buildDropdownFormField(
+            label: 'Do you already have a license?',
+            items: ['Yes', 'No'],
+            value: _hasLicense,
+            onChanged: (String? value) {
+              setState(() {
+                _hasLicense = value;
+              });
+            },
+          ),
+
+          if (_hasLicense == 'Yes') ...[
+            // License Information Section
+            _buildTextFormField(
+              label: 'License Number',
+              controller: _licenseNumberController,
+              hintText: 'eg. 01-01-88-01-001',
+            ),
+
+            _buildDateField(
+              'Issue Date',
+              _issueDate,
+                  () => _selectDate(context, true),
+            ),
+
+            _buildDateField(
+              'Expiry Date',
+              _expiryDate,
+                  () => _selectDate(context, false),
+            ),
+
+            _buildDropdownFormField(
+              label: 'Licensing office',
+              items: _licensingOffices,
+              value: _selectedLicensingOffice,
+              onChanged: (String? value) {
+                setState(() {
+                  _selectedLicensingOffice = value;
+                });
+              },
+            ),
+
+            _buildFileUploadField(
+              label: 'License Front',
+              documentKey: 'license_front',
+              maxSizeMB: 5,
+              hintText: 'Please upload License Front',
+            ),
+
+            _buildFileUploadField(
+              label: 'License Back',
+              documentKey: 'license_back',
+              maxSizeMB: 5,
+              hintText: 'Please upload License Back',
+            ),
+
+            // Industry Documents Section
+            _buildSectionHeader('Industry Documents'),
+
+            // Questions in specified order
+            _buildDropdownFormField(
+              label: 'Is Pvt. Ltd.?',
+              items: ['Yes', 'No'],
+              value: _isPvtLtd,
+              onChanged: (String? value) {
+                setState(() {
+                  _isPvtLtd = value;
+                });
+              },
+            ),
+
+            _buildDropdownFormField(
+              label: 'Is Branch?',
+              items: ['Yes', 'No'],
+              value: _isBranch,
+              onChanged: (String? value) {
+                setState(() {
+                  _isBranch = value;
+                });
+              },
+            ),
+
+            _buildDropdownFormField(
+              label: 'Is Brand Registered?',
+              items: ['Yes', 'No'],
+              value: _isBrandRegistered,
+              onChanged: (String? value) {
+                setState(() {
+                  _isBrandRegistered = value;
+                });
+              },
+            ),
+
+            _buildTextFormField(
+              label: 'Industry Registration No.',
+              controller: _registrationNumberController,
+            ),
+
+            _buildTextFormField(
+              label: 'PAN / VAT No.',
+              controller: _panVatController,
+            ),
+
+            // Documents Section (always shown)
+            _buildFileUploadField(
+              label: 'Industry Registration',
+              documentKey: 'industry_registration',
+              maxSizeMB: 5,
+              hintText: 'Please upload Industry Registration',
+            ),
+
+            // Conditional Documents
+            if (_isPvtLtd == 'Yes') ...[
+              _buildFileUploadField(
+                label: 'Letter of Administration',
+                documentKey: 'letter_of_administration',
+                maxSizeMB: 5,
+                hintText: 'Please upload Letter of Administration',
+              ),
+
+              _buildFileUploadField(
+                label: 'Company Regulation',
+                documentKey: 'company_regulation',
+                maxSizeMB: 5,
+                hintText: 'Please upload Company Regulation',
+              ),
+
+              _buildFileUploadField(
+                label: 'Updated Share Cost',
+                documentKey: 'updated_share_cost',
+                maxSizeMB: 5,
+                hintText: 'Please upload Updated Share Cost',
+              ),
+            ],
+
+            if (_isBrandRegistered == 'Yes') ...[
+              _buildFileUploadField(
+                label: 'Brand Registration',
+                documentKey: 'brand_registration',
+                maxSizeMB: 5,
+                hintText: 'Please upload Brand Registration',
+              ),
+            ],
+
+            // Technical Documents Section
+            _buildSectionHeader('Additional Documents'),
+
+            _buildFileUploadField(
+              label: 'Technical Proposal',
+              documentKey: 'technical_proposal',
+              maxSizeMB: 20,
+              hintText: 'Please upload Technical Proposal',
+            ),
+
+            _buildFileUploadField(
+              label: 'Registration Form',
+              documentKey: 'registration_form',
+              maxSizeMB: 5,
+              hintText: 'Please upload Registration Form',
+            ),
+
+            _buildFileUploadField(
+              label: 'Technical Details Scheme for Assuring Food Safety and Quality',
+              documentKey: 'technical_details_scheme',
+              maxSizeMB: 20,
+              hintText: 'Please upload Technical Details Scheme',
+            ),
+
+            _buildFileUploadField(
+              label: 'PAN / VAT',
+              documentKey: 'pan_vat_doc',
+              maxSizeMB: 5,
+              hintText: 'Please upload PAN / VAT',
+            ),
+
+            _buildFileUploadField(
+              label: 'Proposed Industry Layout',
+              documentKey: 'proposed_industry_layout',
+              maxSizeMB: 20,
+              hintText: 'Please upload Proposed Industry Layout',
+              isRequired: false,
+            ),
+
+            _buildFileUploadField(
+              label: 'Trademark Registration',
+              documentKey: 'trademark_registration',
+              maxSizeMB: 5,
+              hintText: 'Please upload Trademark Registration',
+              isRequired: false,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

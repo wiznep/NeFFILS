@@ -1,0 +1,359 @@
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:neffils/domain/models/industry/industry_view_model.dart';
+import 'package:neffils/domain/repositories/industry/industry_view_repository.dart';
+
+class LicenseDocumentsFormController {
+  final Function(Map<String, dynamic>) onChanged;
+  final Function(bool) onValidationChanged;
+  final Map<String, dynamic> initialData;
+  final bool isIndustryPreselected;
+
+  String? selectedIndustry;
+  String? selectedIndustryId;
+  String? selectedDftqcOffice;
+  String? isPvtLtd = 'No';
+  String? isBranch = 'No';
+  String? isBrandRegistered = 'No';
+
+  final registrationNumberController = TextEditingController();
+  final panVatController = TextEditingController();
+
+  final Map<String, PlatformFile?> documentFiles = {
+    'industry_registration': null,
+    'letter_of_administration': null,
+    'company_regulation': null,
+    'updated_share_cost': null,
+    'brand_registration': null,
+    'technical_proposal': null,
+    'registration_form': null,
+    'technical_details_scheme': null,
+    'pan_vat_doc': null,
+    'proposed_industry_layout': null,
+    'trademark_registration': null,
+  };
+
+  final List<String> _dftqcOffices = [
+    'DFTQC Office 1',
+    'DFTQC Office 2',
+    'DFTQC Office 3',
+  ];
+
+  List<String> get dftqcOffices => _dftqcOffices;
+
+  List<IndustryView> industries = [];
+  bool isLoadingIndustries = false;
+
+  LicenseDocumentsFormController({
+    required this.onChanged,
+    required this.onValidationChanged,
+    required this.initialData,
+    required this.isIndustryPreselected,
+  });
+
+  Future<void> loadInitialData() async {
+    if (!isIndustryPreselected) {
+      await fetchIndustries();
+    }
+
+    if (initialData.isNotEmpty) {
+      selectedIndustry = initialData['industry_name'];
+      selectedIndustryId = initialData['industry_id'];
+      selectedDftqcOffice = initialData['dftqc_office'];
+      isPvtLtd = initialData['is_pvt_ltd'] ?? 'No';
+      isBranch = initialData['is_branch'] ?? 'No';
+      isBrandRegistered = initialData['is_brand_registered'] ?? 'No';
+      registrationNumberController.text = initialData['registration_number'] ?? '';
+      panVatController.text = initialData['pan_vat'] ?? '';
+    }
+
+    updateData();
+  }
+
+  Future<void> fetchIndustries() async {
+    try {
+      isLoadingIndustries = true;
+      final repository = IndustryViewRepository();
+      industries = await repository.getAllIndustries();
+      industries = industries.where((industry) => industry.canApplyForLicense).toList();
+    } catch (e) {
+      debugPrint('Error fetching industries: $e');
+    } finally {
+      isLoadingIndustries = false;
+    }
+  }
+
+  void updateData() {
+    final data = {
+      'industry_id': selectedIndustryId,
+      'industry_name': selectedIndustry,
+      'dftqc_office': selectedDftqcOffice,
+      'is_pvt_ltd': isPvtLtd,
+      'is_branch': isBranch,
+      'is_brand_registered': isBrandRegistered,
+      'registration_number': registrationNumberController.text,
+      'pan_vat': panVatController.text,
+      'documents': documentFiles,
+    };
+    onChanged(data);
+    validateForm();
+  }
+
+  void validateForm() {
+    bool isValid = true;
+
+    if (selectedIndustry == null || selectedIndustry!.isEmpty) isValid = false;
+    if (selectedDftqcOffice == null || selectedDftqcOffice!.isEmpty) isValid = false;
+    if (registrationNumberController.text.isEmpty) isValid = false;
+    if (panVatController.text.isEmpty) isValid = false;
+
+    if (documentFiles['industry_registration'] == null) isValid = false;
+
+    if (isPvtLtd == 'Yes') {
+      if (documentFiles['letter_of_administration'] == null ||
+          documentFiles['company_regulation'] == null ||
+          documentFiles['updated_share_cost'] == null) {
+        isValid = false;
+      }
+    }
+
+    if (isBrandRegistered == 'Yes' && documentFiles['brand_registration'] == null) {
+      isValid = false;
+    }
+
+    onValidationChanged(isValid);
+  }
+
+  List<Widget> buildRequiredDocuments() {
+    return [
+      buildFileUploadField(
+        label: 'Industry Registration',
+        documentKey: 'industry_registration',
+        maxSizeMB: 5,
+      ),
+    ];
+  }
+
+  List<Widget> buildPvtLtdDocuments() {
+    return [
+      buildFileUploadField(
+        label: 'Letter of Administration',
+        documentKey: 'letter_of_administration',
+        maxSizeMB: 5,
+      ),
+      buildFileUploadField(
+        label: 'Company Regulation',
+        documentKey: 'company_regulation',
+        maxSizeMB: 5,
+      ),
+      buildFileUploadField(
+        label: 'Updated Share Cost',
+        documentKey: 'updated_share_cost',
+        maxSizeMB: 5,
+      ),
+    ];
+  }
+
+  List<Widget> buildBrandDocuments() {
+    return [
+      buildFileUploadField(
+        label: 'Brand Registration',
+        documentKey: 'brand_registration',
+        maxSizeMB: 5,
+      ),
+    ];
+  }
+
+  List<Widget> buildOptionalDocuments() {
+    return [
+      buildFileUploadField(
+        label: 'Technical Proposal',
+        documentKey: 'technical_proposal',
+        maxSizeMB: 20,
+      ),
+      buildFileUploadField(
+        label: 'Registration Form',
+        documentKey: 'registration_form',
+        maxSizeMB: 5,
+      ),
+      buildFileUploadField(
+        label: 'Technical Details Scheme',
+        documentKey: 'technical_details_scheme',
+        maxSizeMB: 20,
+      ),
+      buildFileUploadField(
+        label: 'PAN / VAT',
+        documentKey: 'pan_vat_doc',
+        maxSizeMB: 5,
+      ),
+      buildFileUploadField(
+        label: 'Proposed Industry Layout',
+        documentKey: 'proposed_industry_layout',
+        maxSizeMB: 20,
+        isRequired: false,
+      ),
+      buildFileUploadField(
+        label: 'Trademark Registration',
+        documentKey: 'trademark_registration',
+        maxSizeMB: 5,
+        isRequired: false,
+      ),
+    ];
+  }
+
+  List<Widget> buildAdditionalDocuments() {
+    return [];
+  }
+
+  Widget buildAddDocumentButton() {
+    return ElevatedButton.icon(
+      onPressed: () {},
+      icon: const Icon(Icons.add),
+      label: const Text("Add Additional Document"),
+    );
+  }
+
+  Widget buildFileUploadField({
+    required String label,
+    required String documentKey,
+    required int maxSizeMB,
+    bool isRequired = true,
+  }) {
+    final file = documentFiles[documentKey];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isRequired ? "$label *" : label,
+          style: const TextStyle(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 4),
+        GestureDetector(
+          onTap: () => pickFile(documentKey, maxSizeMB),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.upload_file, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    file?.name ?? 'Upload $label',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (file != null)
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () {
+                      documentFiles[documentKey] = null;
+                      updateData();
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Future<void> pickFile(String documentKey, int maxSizeMB) async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (result != null) {
+        final file = result.files.first;
+        final fileSizeMB = file.size / (1024 * 1024);
+
+        if (fileSizeMB > maxSizeMB) {
+          debugPrint('File size exceeds $maxSizeMB MB limit');
+          return;
+        }
+
+        documentFiles[documentKey] = file;
+        updateData();
+      }
+    } catch (e) {
+      debugPrint('Error picking file: $e');
+    }
+  }
+
+  Widget buildIndustrySelection() {
+    if (isIndustryPreselected) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Selected Industry',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            selectedIndustry ?? 'No industry selected',
+            style: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Select Industry *',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: selectedIndustry,
+              hint: isLoadingIndustries
+                  ? const Text('Loading industries...')
+                  : const Text('Select an industry'),
+              icon: const Icon(Icons.arrow_drop_down),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  final selected = industries.firstWhere(
+                        (industry) => industry.displayName == newValue,
+                  );
+                  selectedIndustry = newValue;
+                  selectedIndustryId = selected.id;
+                  updateData();
+                }
+              },
+              items: industries.map<DropdownMenuItem<String>>((IndustryView industry) {
+                return DropdownMenuItem<String>(
+                  value: industry.displayName,
+                  child: Text(industry.displayName),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  void dispose() {
+    registrationNumberController.dispose();
+    panVatController.dispose();
+  }
+}

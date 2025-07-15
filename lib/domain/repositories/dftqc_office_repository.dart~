@@ -1,0 +1,27 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:neffils/domain/models/dftqc/dftqc_office_model.dart';
+
+import '../models/dftqc_office_model.dart';
+
+class DftqcOfficeRepository {
+  final String baseUrl = 'https://dev-neffils.kantipurinfotech.com/api';
+  final String token = 'YOUR_TOKEN_HERE'; // Replace or load dynamically
+
+  Future<List<DftqcOffice>> fetchOffices() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/account/branch/'),
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((item) => DftqcOffice.fromJson(item)).toList();
+    } else {
+      throw Exception('Failed to load DFTQC offices');
+    }
+  }
+}

@@ -1,0 +1,30 @@
+// lib/presentation/widgets/shimmer_loader.dart
+
+import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
+
+class SettingShimmerLoader extends StatelessWidget {
+  const SettingShimmerLoader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 50),
+      itemCount: 6,
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

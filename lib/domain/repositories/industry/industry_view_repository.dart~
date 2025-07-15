@@ -1,0 +1,353 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:neffils/config/config.dart';
+
+import '../../../data/services/token/token_storage_service.dart';
+import '../../models/dropdown_option_model.dart';
+import '../../models/industry/industry_optdetails.dart';
+import '../../models/industry/industry_proprietor_model.dart';
+import '../../models/industry/industry_shareholder.dart';
+import '../../models/industry/industry_view_model.dart';
+import '../../models/industry/industry_basic_info.dart';
+
+class IndustryViewRepository {
+  static const String _baseUrl = '$apiUrl';
+
+  Future<String> _getToken() async {
+    final token = await TokenStorageService.getAccessToken();
+    if (token == null) throw Exception('No authentication token found');
+    return token;
+  }
+
+  /// Fetch all industries (GET /industry/industry/)
+  Future<List<IndustryView>> getAllIndustries() async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/industry/industry/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final results = data['results'] as List;
+      return results.map((json) => IndustryView.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load industries: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// Get Basic Industry Info by ID (GET /industry/industry/{id}/basic-info-update/)
+  Future<IndustryBasicInfo> getBasicIndustryInfo(String industryId) async {
+    final token = await _getToken();
+
+    final url = Uri.parse('$_baseUrl/industry/industry/$industryId/basic-info-update/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return IndustryBasicInfo(
+        id: json['id'],
+        nameEn: json['name_en'] ?? '',
+        nameNp: json['name_np'] ?? '',
+        contactNumber: json['contact_number'] ?? '',
+        industryType: json['industry_type'] ?? '',
+        industryCapital: json['industry_capital'] ?? '',
+        ownProperty: json['own_property'] ?? false,
+        totalProperty: json['total_property'] ?? '',
+        industryCapacity: json['estimated_industry_production_capacity'] ?? '',
+        marketSize: json['estimated_market_size'] ?? '',
+        numberOfEmployees: json['employee_count'] ?? 0,
+        intendedProducts: json['intended_products'] ?? '',
+        country: json['country'] ?? '',
+        province: json['province'] ?? '',
+        district: json['district'] ?? '',
+        municipality: json['local_level'] ?? '',
+        wardNo: json['ward_number'] ?? '',
+        houseNo: json['house_number'] ?? '',
+        nearestLandmark: json['nearest_landmark'] ?? '',
+        gPlusCode: json['g_plus_code'] ?? '',
+      );
+    } else {
+      throw Exception('Failed to load basic industry info: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// Update Basic Industry Info (PATCH /industry/industry/{id}/basic-info-update/)
+  Future<void> updateBasicIndustryInfo(String industryId, IndustryBasicInfo info) async {
+    final token = await _getToken();
+
+    final url = Uri.parse('$_baseUrl/industry/industry/$industryId/basic-info-update/');
+    final response = await http.patch(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(info.toJson()),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update basic industry info: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// Get operational info (GET /industry/industry/{id}/update-operational/)
+  Future<IndustryOperationalInfo> getOperationalInfo(String industryId) async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/industry/industry/$industryId/update-operational/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return IndustryOperationalInfo.fromJson(json);
+    } else if (response.statusCode == 404) {
+      throw Exception('Operational info not found');
+    } else {
+      throw Exception('Failed to load operational info: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// Update operational info (PATCH /industry/industry/{id}/update-operational/)
+  Future<void> updateOperationalInfo(String industryId, IndustryOperationalInfo info) async {
+    final token = await _getToken();
+
+    final response = await http.patch(
+      Uri.parse('$_baseUrl/industry/industry/$industryId/update-operational/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(info.toJson()),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update operational info: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// Submit shareholders via multipart form-data (PATCH /industry/industry/{id}/add-shareholders/)
+  Future<void> submitShareholders({
+    required String industryId,
+    required List<Shareholder> shareholders,
+  }) async {
+    final token = await _getToken();
+
+    final url = Uri.parse('$_baseUrl/industry/industry/$industryId/add-shareholders/');
+    final request = http.MultipartRequest('PATCH', url);
+    request.headers['Authorization'] = 'Bearer $token';
+
+    for (int i = 0; i < shareholders.length; i++) {
+      final s = shareholders[i];
+
+      request.fields['shareholders.$i.name_en'] = s.nameEnglish;
+      request.fields['shareholders.$i.name_np'] = s.nameNepali;
+      request.fields['shareholders.$i.citizenship_number'] = s.citizenshipNumber;
+
+      final imagePath = s.citizenshipImagePath;
+      if (imagePath != null && imagePath.isNotEmpty) {
+        final file = File(imagePath);
+        if (file.existsSync()) {
+          final fileSize = await file.length();
+          if (fileSize > 5 * 1024 * 1024) {
+            throw Exception('File size exceeds 5 MB for shareholder ${i + 1}');
+          }
+          request.files.add(await http.MultipartFile.fromPath(
+            'shareholders.$i.citizenship_image',
+            file.path,
+          ));
+        } else {
+          throw Exception('Citizenship file not found for shareholder ${i + 1}');
+        }
+      }
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to submit shareholders: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// Fetch shareholders (GET /industry/industry/{id}/add-shareholders/)
+  Future<List<Shareholder>> fetchShareholders(String industryId) async {
+    final token = await _getToken();
+
+    final url = Uri.parse('$_baseUrl/industry/industry/$industryId/add-shareholders/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => Shareholder.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to fetch shareholders: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// Delete shareholder (DELETE /industry/remove-shareholder/{id}/)
+  Future<void> deleteShareholder(String id) async {
+    final token = await _getToken();
+
+    final url = Uri.parse('$_baseUrl/industry/remove-shareholder/$id/');
+    final response = await http.delete(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete shareholder: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// GET proprietor info
+  Future<Proprietor> getProprietor(String industryId) async {
+    final token = await _getToken();
+
+    final url = Uri.parse('$_baseUrl/industry/industry/$industryId/add-proprietor/');
+    final response = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return Proprietor.fromJson(json);
+    } else {
+      throw Exception('Failed to fetch proprietor: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// PATCH proprietor info
+  Future<void> updateProprietor(String industryId, Proprietor proprietor) async {
+    final token = await _getToken();
+
+    final url = Uri.parse('$_baseUrl/industry/industry/$industryId/add-proprietor/');
+    final response = await http.patch(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(proprietor.toJson()),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update proprietor: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  /// PATCH proprietor info with signature image (multipart)
+  Future<void> updateProprietorWithSignature({
+    required String industryId,
+    required Proprietor proprietor,
+    required File? signatureImage,
+  }) async {
+    final token = await _getToken();
+
+    final url = Uri.parse('$_baseUrl/industry/industry/$industryId/add-proprietor/');
+    final request = http.MultipartRequest('PATCH', url);
+    request.headers['Authorization'] = 'Bearer $token';
+
+    // Add all fields
+    final data = proprietor.toJson();
+    data.remove('proprietor_signature'); // Handle image separately
+    data.forEach((key, value) {
+      if (value != null) {
+        request.fields[key] = value.toString();
+      }
+    });
+
+    // Add signature image if exists
+    if (signatureImage != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'proprietor_signature',
+        signatureImage.path,
+      ));
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update proprietor: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  Future<Proprietor?> getProprietorInfo(String industryId) async {
+    try {
+      final token = await TokenStorageService.getAccessToken();
+      if (token == null) return null;
+
+      final response = await http.get(
+        Uri.parse('$apiUrl/industry/industry/$industryId/add-proprietor/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return Proprietor.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 404) {
+        return null;
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Failed to load proprietor: $e');
+    }
+  }
+
+  Future<List<DropdownOption>> fetchOptionsproprietor(String endpoint, {String? queryParams}) async {
+    try {
+      final token = await TokenStorageService.getAccessToken();
+      if (token == null) throw Exception('Authentication required');
+
+      final url = Uri.parse('$apiUrl/$endpoint${queryParams ?? ''}');
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((item) {
+          return DropdownOption(
+            id: item['id'].toString(),
+            name: item['name_en'] ?? item['name_np'] ?? item['name'] ?? item['id'].toString(),
+          );
+        }).toList();
+      }
+      throw Exception('Failed to load options: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error fetching options: $e');
+    }
+  }
+}

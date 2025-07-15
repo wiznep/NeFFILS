@@ -1,0 +1,138 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../data/services/token/token_storage_service.dart';
+import '../../domain/models/notification_model.dart';
+import '../../domain/repositories/notification_repository.dart';
+import '../../utils/colors/color.dart';
+import '../widgets/empty_view/empty_state_widget.dart';
+import '../widgets/error_view/error_view.dart';
+import '../widgets/shimmer/notification_shimmer.dart';
+
+class NotificationsScreen extends StatefulWidget {
+  const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  Future<List<NotificationModel>>? _notificationsFuture;
+  NotificationRepository? _repository;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  void _loadNotifications() async {
+    final token = await TokenStorageService.getAccessToken();
+
+    if (token != null) {
+      _repository = NotificationRepository(token);
+      setState(() {
+        _notificationsFuture = _repository!.fetchNotifications();
+      });
+    } else {
+      setState(() {
+        _notificationsFuture = Future.error("Missing access token.");
+      });
+    }
+  }
+
+  void _markAsRead(String id) async {
+    if (_repository != null) {
+      await _repository!.markAsRead(id);
+      _loadNotifications();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 1,
+        foregroundColor: Colors.black,
+      ),
+      body: FutureBuilder<List<NotificationModel>>(
+        future: _notificationsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const NotificationsShimmer();
+          } else if (snapshot.hasError) {
+            return ErrorStateWidget(
+              message: 'Failed to load notifications.\nPlease check your connection.',
+              onRetry: _loadNotifications,
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const EmptyStateWidget(
+              title: 'No notifications yet',
+              subtitle: 'We\'ll notify you when something arrives.',
+            );
+          }
+
+          final notifications = snapshot.data!;
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: notifications.length,
+            itemBuilder: (context, index) {
+              final notification = notifications[index];
+              return GestureDetector(
+                onTap: () => _markAsRead(notification.id),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: notification.isRead
+                        ? Colors.white
+                        : Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        notification.notificationMessage,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            notification.contentTypeName,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Text(
+                            DateFormat.yMMMd().add_jm().format(
+                              DateTime.parse(notification.updatedDateEn),
+                            ),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}

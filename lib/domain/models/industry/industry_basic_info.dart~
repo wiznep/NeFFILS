@@ -1,0 +1,85 @@
+class IndustryBasicInfo {
+  String? id;
+  String nameEn, nameNp, contactNumber;
+  String industryType, industryCapital;
+  bool ownProperty;
+  String totalProperty, industryCapacity, marketSize;
+  int numberOfEmployees;
+  String intendedProducts;
+  String country, province, district, municipality;
+  String wardNo, houseNo, nearestLandmark, gPlusCode;
+
+  IndustryBasicInfo({
+    this.id,
+    required this.nameEn,
+    required this.nameNp,
+    required this.contactNumber,
+    required this.industryType,
+    required this.industryCapital,
+    required this.ownProperty,
+    required this.totalProperty,
+    required this.industryCapacity,
+    required this.marketSize,
+    required this.numberOfEmployees,
+    required this.intendedProducts,
+    required this.country,
+    required this.province,
+    required this.district,
+    required this.municipality,
+    required this.wardNo,
+    required this.houseNo,
+    required this.nearestLandmark,
+    required this.gPlusCode,
+  });
+
+  Map<String, dynamic> toJson() {
+    final data = {
+      "name_en": nameEn,
+      "name_np": nameNp,
+      "industry_type": industryType,
+      "industry_capital": industryCapital,
+      "contact_number": contactNumber,
+      "total_property": totalProperty,
+      "own_property": ownProperty,
+      "employee_count": numberOfEmployees,
+      "intended_products": intendedProducts,
+      "estimated_industry_production_capacity": industryCapacity,
+      "estimated_market_size": marketSize,
+      "country": country,
+      "province": province,
+      "district": district,
+      "local_level": municipality,
+      "ward_number": wardNo,
+      "house_number": houseNo,
+      "nearest_landmark": nearestLandmark,
+      "g_plus_code": gPlusCode,
+    };
+    if (id != null) data['id'] = id as Object;
+    return data;
+  }
+
+  static empty() {
+    return IndustryBasicInfo(
+      nameEn: '',
+      nameNp: '',
+      contactNumber: '',
+      industryType: '',
+      industryCapital: '',
+      ownProperty: false,
+      totalProperty: '',
+      industryCapacity: '',
+      marketSize: '',
+      numberOfEmployees: 0,
+      intendedProducts: '',
+      country: '',
+      province: '',
+      district: '',
+      municipality: '',
+      wardNo: '',
+      houseNo: '',
+      nearestLandmark: '',
+      gPlusCode: '',
+    );
+  }
+}
+

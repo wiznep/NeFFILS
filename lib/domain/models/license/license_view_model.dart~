@@ -1,0 +1,32 @@
+class LicenseViewModel {
+  final String id;
+  final String applicationnumber;
+  final String industrynameen;
+  final String industrynamenp;
+  final String dftqctypeen;
+  final String dftqctypenp;
+  final String status;
+
+  LicenseViewModel({
+    required this.id,
+    required this.applicationnumber,
+    required this.industrynameen,
+    required this.industrynamenp,
+    required this.dftqctypeen,
+    required this.dftqctypenp,
+    required this.status,
+
+  });
+
+  factory LicenseViewModel.fromJson(Map<String, dynamic> json) {
+    return LicenseViewModel(
+      id: json['id'],
+      applicationnumber: json['application_number'] ?? '',
+      industrynameen: json['industry_name_en'] ?? '',
+      industrynamenp: json['industry_name_np'] ?? '',
+      dftqctypeen: json['dftqc_office_name_en'] ?? '',
+      dftqctypenp: json['dftqc_type_np'] ?? '',
+      status: json['status'] ?? '',
+    );
+  }
+}

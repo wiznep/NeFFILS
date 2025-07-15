@@ -1,0 +1,196 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/utils/colors/color.dart';
+import 'package:neffils/utils/colors/color.dart';
+import 'package:neffils/utils/colors/color.dart';
+
+class ShareholderCard extends StatelessWidget {
+  final int index;
+  final Map<String, dynamic> shareholder;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const ShareholderCard({
+    Key? key,
+    required this.index,
+    required this.shareholder,
+    required this.onEdit,
+    required this.onDelete,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'Shareholder ${index + 1}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: appColors.formsubmit,
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.edit, size: 20),
+                      color: appColors.formsubmit,
+                      onPressed: onEdit,
+                      splashRadius: 20,
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete, size: 20),
+                      color: Colors.red,
+                      onPressed: onDelete,
+                      splashRadius: 20,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Divider
+            Divider(height: 1, color: Colors.grey.shade200),
+            const SizedBox(height: 12),
+
+            // Information Rows
+            _buildInfoRow(
+              icon: Icons.person_outline,
+              label: 'Name (English)',
+              value: shareholder['nameEnglish'] ?? 'Not provided',
+            ),
+            _buildInfoRow(
+              icon: Icons.person_outline,
+              label: 'Name (Nepali)',
+              value: shareholder['nameNepali'] ?? 'Not provided',
+            ),
+            _buildInfoRow(
+              icon: Icons.credit_card_outlined,
+              label: 'Citizenship No.',
+              value: shareholder['citizenshipNumber'] ?? 'Not provided',
+            ),
+
+            if (shareholder['citizenshipFile'] != null) ...[
+              const SizedBox(height: 8),
+              Divider(height: 1, color: Colors.grey.shade200),
+              const SizedBox(height: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.attach_file, size: 18, color: Colors.grey.shade600),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Citizenship File:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Previewing ${shareholder['citizenshipFile']}'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity, // Take full width
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.file_present, size: 16, color: appColors.formsubmit),
+                          const SizedBox(width: 4),
+                          Flexible( // Allows text to wrap
+                            child: Text(
+                              shareholder['citizenshipFile'],
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade800,
+                              ),
+                              overflow: TextOverflow.ellipsis, // Handle long file names
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({required IconData icon, required String label, required String value}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.grey.shade500),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

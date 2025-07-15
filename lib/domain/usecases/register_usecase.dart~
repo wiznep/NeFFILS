@@ -1,0 +1,18 @@
+import '../models/userRegister_model.dart';
+import '../repositories/auth_repository.dart';
+
+class RegisterUseCase {
+  final AuthRepository repository;
+
+  RegisterUseCase(this.repository);
+
+  Future<UserRegistration> execute(
+      String fullName,
+      String email,
+      String phone,
+      String username,
+      String password,
+      ) {
+    return repository.register(fullName, username, phone, email, password);
+  }
+}

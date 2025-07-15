@@ -1,0 +1,88 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../models/license/documents_view.dart';
+
+class DocumentRepository {
+  static const _storage = FlutterSecureStorage();
+  static const _accessTokenKey = 'access_token';
+
+  Future<List<IndustryDocument>> getIndustryDocuments(String industryId) async {
+    final token = await _storage.read(key: _accessTokenKey);
+
+    final response = await http.get(
+      Uri.parse('https://dev-neffils.kantipurinfotech.com/api/industry/industry/$industryId/upload-documents/'),
+      headers: {
+        'accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList.map((json) => IndustryDocument.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load documents: ${response.statusCode}');
+    }
+  }
+
+  Future<void> uploadDocument({
+    required String industryId,
+    required String documentCode,
+    required String filePath,
+    String? documentId,
+    String? documentName,
+  }) async {
+    final token = await _storage.read(key: _accessTokenKey);
+    final request = http.MultipartRequest(
+      documentId == null ? 'POST' : 'PATCH',
+      Uri.parse('https://dev-neffils.kantipurinfotech.com/api/industry/industry/$industryId/upload-documents/'),
+    );
+
+    request.headers.addAll({
+      'accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    });
+
+    if (documentId != null) {
+      request.fields['document_id'] = documentId;
+    }
+
+    if (documentName != null && documentCode.startsWith('ADDITIONAL_DOCUMENT')) {
+      request.fields['name'] = documentName;
+    }
+
+    request.files.add(await http.MultipartFile.fromPath(
+      'file', // Changed from documentCode to 'file'
+      filePath,
+    ));
+
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to upload document: ${response.statusCode} - $responseBody');
+    }
+  }
+
+  Future<void> deleteDocument({
+    required String industryId,
+    required String documentId,
+  }) async {
+    final token = await _storage.read(key: _accessTokenKey);
+
+    final response = await http.delete(
+      Uri.parse('https://dev-neffils.kantipurinfotech.com/api/industry/industry/$industryId/upload-documents/'),
+      headers: {
+        'accept': 'application/json',
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'document_id': documentId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete document: ${response.statusCode}');
+    }
+  }
+}

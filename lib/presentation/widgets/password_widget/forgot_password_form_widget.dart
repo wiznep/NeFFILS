@@ -1,0 +1,69 @@
+import 'package:flutter/material.dart';
+
+import '../../../utils/colors/color.dart';
+import '../../screens/auth/password_screen/Otp_screen.dart';
+import '../../screens/auth/login_screen.dart';
+
+class ForgotPasswordForm extends StatefulWidget {
+  const ForgotPasswordForm({super.key});
+
+  @override
+  State<ForgotPasswordForm> createState() => _ForgotPasswordFormState();
+}
+
+class _ForgotPasswordFormState extends State<ForgotPasswordForm> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text.rich(
+            const TextSpan(children: [
+              TextSpan(text: 'Username '),
+              TextSpan(text: '( प्रयोगकर्ता नाम )'),
+            ])
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            decoration: InputDecoration(
+              hintText: 'Enter your username',
+              hintStyle: TextStyle(color: appColors.white_black),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: appColors.formsubmit, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: appColors.dimwhite, width: 1.5),
+            ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _loading
+          ? const Center( child: CircularProgressIndicator())
+          : ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: appColors.formsubmit,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Send OTP ( OTP पठाउनुहोस् ) ',
+                style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const OtpScreen()));
+            },
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+}

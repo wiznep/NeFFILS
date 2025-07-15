@@ -1,0 +1,14 @@
+import '../models/userLogin_model.dart';
+import '../models/userRegister_model.dart';
+
+abstract class AuthRepository {
+  Future<UserLogin> login(String username, String password);
+
+  Future<UserRegistration> register(
+      String username,
+      String password,
+      String email,
+      String phone,
+      String fullName,
+      );
+}

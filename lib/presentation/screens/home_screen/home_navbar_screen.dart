@@ -1,0 +1,44 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/presentation/screens/settings/setting_screen.dart';
+import '../../widgets/custom_bottom_navbar.dart';
+
+import '../notification_screen.dart';
+import '../search_screen.dart';
+import '../services_screen.dart';
+import 'home_tab.dart';
+
+
+class HomeNavbarScreen extends StatefulWidget {
+  final String username;
+
+  const HomeNavbarScreen({super.key, required this.username});
+
+  @override
+  State<HomeNavbarScreen> createState() => _homenavbarscreen();
+}
+
+class _homenavbarscreen extends State<HomeNavbarScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    const HomeTab(),
+    const ServiceScreen(),
+    const NotificationsScreen(),
+    const SettingScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: CustomBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+      ),
+    );
+  }
+}

@@ -1,0 +1,80 @@
+  import 'package:flutter/material.dart';
+  import 'package:neffils/utils/colors/color.dart';
+  import '../../screens/application_portal/industry_management/add_industry_management/added_industry_success.dart';
+
+  class FormButtons extends StatelessWidget {
+    final int currentStep;
+    final int totalSteps;
+    final bool isNextEnabled;
+    final VoidCallback onBackPressed;
+    final VoidCallback onNextPressed;
+    final VoidCallback onSubmitPressed;
+
+    const FormButtons({
+      Key? key,
+      required this.currentStep,
+      required this.totalSteps,
+      required this.isNextEnabled,
+      required this.onBackPressed,
+      required this.onNextPressed,
+      required this.onSubmitPressed,
+    }) : super(key: key);
+
+    @override
+    Widget build(BuildContext context) {
+      final ButtonStyle buttonStyle = ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 4,
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      );
+
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          if (currentStep > 1)
+            ElevatedButton.icon(
+              onPressed: onBackPressed,
+              style: buttonStyle.copyWith(
+                backgroundColor: MaterialStateProperty.all(Colors.grey.shade400),
+                foregroundColor: MaterialStateProperty.all(Colors.black87),
+                elevation: MaterialStateProperty.all(2),
+              ),
+
+              label: const Text('Previous'),
+            ),
+          if (currentStep == 1) const Spacer(),
+          if (currentStep < totalSteps)
+            ElevatedButton.icon(
+              onPressed: isNextEnabled ? onNextPressed : null,
+              style: buttonStyle.copyWith(
+                backgroundColor: isNextEnabled
+                    ? MaterialStateProperty.all(appColors.formsubmit)
+                    : MaterialStateProperty.all(appColors.formsubmit.withOpacity(0.5)),
+                foregroundColor: MaterialStateProperty.all(Colors.white),
+                elevation: MaterialStateProperty.all(isNextEnabled ? 4 : 0),
+              ),
+              label: const Text('Next'),
+            ),
+          if (currentStep == totalSteps)
+            ElevatedButton(
+              onPressed: () {
+                // Navigate directly to success page without calling onSubmitPressed
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const IndustryAddedSuccess(),
+                  ),
+                );
+              },
+              style: buttonStyle.copyWith(
+                backgroundColor: MaterialStateProperty.all(Colors.green),
+                foregroundColor: MaterialStateProperty.all(Colors.white),
+                elevation: MaterialStateProperty.all(6),
+              ),
+              child: const Text('Submit'),
+            ),
+        ],
+      );
+    }
+  }

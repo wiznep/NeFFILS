@@ -1,0 +1,44 @@
+import 'package:flutter/material.dart';
+import '../widgets/login_form_widget.dart';
+
+class LoginScreen extends StatelessWidget {
+  const LoginScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/images/logo/mainlogo.png', height: 80),
+              const SizedBox(height: 16),
+              const Text(
+                "Login for recommendation or new industry license.",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const Text(
+                " (सिफारिस वा नयाँ उद्योग अनुमतिपत्रको लागि लगइन गर्नुहोस् ।)",
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "If you don't have account please register.",
+                style: TextStyle(fontSize: 13),
+              ),
+              const Text(
+                " (यदि तपाईंको खाता छैन भने कृपया दर्ता गर्नुहोस् ! )",
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              const LoginForm(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,114 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/presentation/screens/application_portal/industry_management/view_Industry_management_screen.dart';
+import 'package:neffils/presentation/screens/application_portal/license_renewal_screen.dart';
+import 'package:neffils/presentation/screens/application_portal/new_license/view_license_screen.dart';
+import 'package:neffils/presentation/screens/application_portal/other_services_screen.dart';
+import 'package:neffils/presentation/screens/application_portal/recommendations/view_recommendation_screen.dart';
+import 'package:neffils/utils/colors/color.dart';
+
+class ServiceScreen extends StatelessWidget {
+  const ServiceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final services = [
+      {
+        'title': 'Industry Management',
+        'description': 'Manage and track industrial applications.',
+        'icon': Icons.business,
+        'screen': const ViewIndustryManagementScreen(),
+      },
+      {
+        'title': 'Recommendations',
+        'description': 'View and apply for recommendations.',
+        'icon': Icons.thumb_up_alt,
+        'screen': const ViewRecommendationScreen(),
+      },
+      {
+        'title': 'New License',
+        'description': 'Apply for new business licenses.',
+        'icon': Icons.card_membership,
+        'screen': const ViewLicenseScreen(),
+      },
+      {
+        'title': 'License Renewal',
+        'description': 'Renew your existing licenses.',
+        'icon': Icons.update,
+        'screen': const LicenseRenewalScreen(),
+      },
+      {
+        'title': 'Other Services',
+        'description': 'Explore additional services provided.',
+        'icon': Icons.miscellaneous_services,
+        'screen': const OtherServicesScreen(),
+      },
+    ];
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: const Text('Our Services'),
+        titleTextStyle: const TextStyle(
+          fontSize: 20,
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: services.length,
+              itemBuilder: (context, index) {
+                final service = services[index];
+                return _buildServiceCard(context, service);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceCard(BuildContext context, Map service) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+            context, MaterialPageRoute(builder: (_) => service['screen']));
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ListTile(
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          leading: CircleAvatar(
+            radius: 24,
+            backgroundColor: appColors.formsubmit,
+            child: Icon(service['icon'], color: Colors.white, size: 28),
+          ),
+          title: Text(service['title'],
+              style:
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          subtitle: Text(service['description'],
+              style: const TextStyle(color: Colors.black54)),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded,
+              color: Colors.grey),
+        ),
+      ),
+    );
+  }
+}

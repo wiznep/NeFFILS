@@ -1,0 +1,406 @@
+// Keep your imports as is
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../../data/services/industry_service.dart';
+import '../../../../../domain/models/dropdown_option_model.dart';
+import '../../../../../utils/colors/color.dart';
+import '../../shimmer/industry_info_shimmer.dart';
+
+class ProprietorView extends StatefulWidget {
+  final Function(bool) onValidationChanged;
+  final VoidCallback onSubmitted;
+
+  const ProprietorView({
+    Key? key,
+    required this.onValidationChanged,
+    required this.onSubmitted,
+  }) : super(key: key);
+
+  @override
+  ProprietorViewState createState() => ProprietorViewState();
+}
+
+class ProprietorViewState extends State<ProprietorView> {
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, List<DropdownOption>> _options = {};
+  bool _isLoading = false;
+  bool _isSameAsPermanent = false;
+  XFile? _signatureImage;
+
+  final List<String> _addressFields = [
+    'country', 'province', 'district', 'municipality', 'wardNo',
+    'houseNo', 'gPlusCode', 'nearestLandmark'
+  ];
+
+  final Map<String, String> _labels = {
+    'proprietorShareholder': 'Proprietor Shareholder',
+    'contactNumber': 'Contact Number',
+    'email': 'Email Address',
+    'grandfatherNameEnglish': 'Grandfather Name in English',
+    'grandfatherNameNepali': 'Grandfather Name in Nepali',
+    'fatherNameEnglish': 'Father Name in English',
+    'fatherNameNepali': 'Father Name in Nepali',
+    'motherNameEnglish': 'Mother Name in English',
+    'motherNameNepali': 'Mother Name in Nepali',
+    'country': 'Country',
+    'province': 'Province',
+    'district': 'District',
+    'municipality': 'Municipality',
+    'wardNo': 'Ward no.',
+    'houseNo': 'House no.',
+    'gPlusCode': 'G-PLUS Code',
+    'nearestLandmark': 'Nearest Landmark',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeControllers();
+    _loadInitialData();
+  }
+
+  void _initializeControllers() {
+    for (var key in _labels.keys) {
+      _controllers[key] = TextEditingController();
+    }
+    for (var key in _addressFields) {
+      _controllers['temp_$key'] = TextEditingController();
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() => _isLoading = true);
+    try {
+      _options['country'] = await IndustryService.fetchOptions('nepal-map/country/') ?? [];
+      _options['province'] = await IndustryService.fetchOptions('nepal-map/province/') ?? [];
+      _options['wardNo'] = List.generate(35,
+              (index) => DropdownOption(id: '${index + 1}', name: '${index + 1}'));
+    } catch (e) {
+      debugPrint('Error loading initial data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+      widget.onValidationChanged(_validateForm());
+    }
+  }
+
+  Future<void> _loadDistricts(String provinceId) async {
+    setState(() {
+      _isLoading = true;
+      _controllers['district']!.clear();
+      _controllers['municipality']!.clear();
+      _options['district'] = [];
+      _options['municipality'] = [];
+    });
+    try {
+      _options['district'] = await IndustryService.fetchOptions(
+        'nepal-map/district/',
+        '?province=$provinceId',
+      ) ?? [];
+    } catch (e) {
+      debugPrint('Error loading districts: $e');
+    } finally {
+      setState(() => _isLoading = false);
+      widget.onValidationChanged(_validateForm());
+    }
+  }
+
+  Future<void> _loadMunicipalities(String districtId) async {
+    setState(() {
+      _isLoading = true;
+      _controllers['municipality']!.clear();
+      _options['municipality'] = [];
+    });
+    try {
+      _options['municipality'] = await IndustryService.fetchOptions(
+        'nepal-map/local-levels/',
+        '?district=$districtId',
+      ) ?? [];
+    } catch (e) {
+      debugPrint('Error loading municipalities: $e');
+    } finally {
+      setState(() => _isLoading = false);
+      widget.onValidationChanged(_validateForm());
+    }
+  }
+
+  bool _validateForm() {
+    final requiredFields = [
+      'proprietorShareholder',
+      'contactNumber', 'email',
+      'grandfatherNameEnglish', 'grandfatherNameNepali',
+      'fatherNameEnglish', 'fatherNameNepali',
+      'motherNameEnglish', 'motherNameNepali',
+    ];
+    for (var field in requiredFields) {
+      if (_controllers[field]?.text.trim().isEmpty ?? true) return false;
+    }
+
+    for (var field in _addressFields) {
+      if (['gPlusCode', 'nearestLandmark'].contains(field)) continue;
+      if (_controllers[field]?.text.trim().isEmpty ?? true) return false;
+    }
+
+    if (!_isSameAsPermanent) {
+      for (var field in _addressFields) {
+        if (['gPlusCode', 'nearestLandmark'].contains(field)) continue;
+        if (_controllers['temp_$field']?.text.trim().isEmpty ?? true) return false;
+      }
+    }
+
+    return _signatureImage != null;
+  }
+
+  Future<void> _pickSignatureImage() async {
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _signatureImage = pickedFile;
+        widget.onValidationChanged(_validateForm());
+      });
+    }
+  }
+
+  Widget _buildLabel({required String label, bool isRequired = true}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            if (isRequired)
+              const TextSpan(
+                text: '* ',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+              ),
+            TextSpan(
+              text: label,
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({String? hintText, bool isRequired = true}) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(color: Colors.grey[600]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[400]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: appColors.text_field, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[400]!),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _buildTextField(String key, {bool isRequired = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label: _labels[key] ?? key, isRequired: isRequired),
+        TextFormField(
+          controller: _controllers[key],
+          onChanged: (_) => widget.onValidationChanged(_validateForm()),
+          decoration: _inputDecoration(hintText: 'Enter ${_labels[key]?.toLowerCase() ?? key}'),
+          style: const TextStyle(fontSize: 15),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown(String key, {bool isRequired = true}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label: _labels[key] ?? key, isRequired: isRequired),
+        DropdownButtonFormField<String>(
+          value: _controllers[key]!.text.isEmpty ? null : _controllers[key]!.text,
+          decoration: _inputDecoration(hintText: 'Select ${_labels[key]?.toLowerCase()}'),
+          items: (_options[key] ?? []).map((e) => DropdownMenuItem(
+            value: e.id,
+            child: Text(e.name, style: const TextStyle(fontSize: 15)),
+          )).toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              _controllers[key]!.text = value;
+              if (key == 'province') _loadDistricts(value);
+              if (key == 'district') _loadMunicipalities(value);
+              widget.onValidationChanged(_validateForm());
+            });
+          },
+          icon: const Icon(Icons.arrow_drop_down),
+          iconEnabledColor: Colors.grey[700],
+          dropdownColor: Colors.white,
+          style: TextStyle(color: Colors.grey[800]),
+          borderRadius: BorderRadius.circular(8),
+          isExpanded: true,
+          menuMaxHeight: 300,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddressSection(String prefix) {
+    String fixKey(String key) => prefix.isEmpty ? key : '${prefix}_$key';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        _buildDropdown(fixKey('country')),
+        const SizedBox(height: 16),
+        _buildDropdown(fixKey('province')),
+        const SizedBox(height: 16),
+        _buildDropdown(fixKey('district')),
+        const SizedBox(height: 16),
+        _buildDropdown(fixKey('municipality')),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _buildDropdown(fixKey('wardNo'))),
+            const SizedBox(width: 16),
+            Expanded(child: _buildTextField(fixKey('houseNo'))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(fixKey('gPlusCode'), isRequired: false),
+        const SizedBox(height: 16),
+        _buildTextField(fixKey('nearestLandmark'), isRequired: false),
+      ],
+    );
+  }
+
+  Widget _buildSignatureSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Signature'),
+        _buildLabel(label: 'Signature Image (Max File Size 5 MB)', isRequired: true),
+        const SizedBox(height: 8),
+        ElevatedButton(
+          onPressed: _pickSignatureImage,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: appColors.text_field,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Colors.grey[400]!),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.upload_file, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                _signatureImage?.name ?? 'Upload Signature Image',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+        if (_signatureImage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Selected: ${_signatureImage!.name}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSameAddressCheckbox() {
+    return Row(
+      children: [
+        Checkbox(
+          value: _isSameAsPermanent,
+          onChanged: (value) {
+            setState(() {
+              _isSameAsPermanent = value ?? false;
+              widget.onValidationChanged(_validateForm());
+            });
+          },
+        ),
+        const Text('Same as permanent address?'),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: appColors.white_black,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _isLoading && _options.isEmpty
+        ? const IndustryInfoShimmer()
+        : SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader('Proprietor Information'),
+          _buildTextField('proprietorShareholder'),
+          const SizedBox(height: 16),
+          _buildTextField('contactNumber'),
+          const SizedBox(height: 16),
+          _buildTextField('email'),
+          const SizedBox(height: 16),
+          _buildSignatureSection(),
+          _buildSectionHeader('Permanent Address'),
+          _buildAddressSection(''),
+          _buildSectionHeader('Temporary Address'),
+          _buildSameAddressCheckbox(),
+          if (!_isSameAsPermanent) _buildAddressSection('temp'),
+          _buildSectionHeader('Family Details'),
+          _buildTextField('grandfatherNameEnglish'),
+          const SizedBox(height: 16),
+          _buildTextField('grandfatherNameNepali'),
+          const SizedBox(height: 16),
+          _buildTextField('fatherNameEnglish'),
+          const SizedBox(height: 16),
+          _buildTextField('fatherNameNepali'),
+          const SizedBox(height: 16),
+          _buildTextField('motherNameEnglish'),
+          const SizedBox(height: 16),
+          _buildTextField('motherNameNepali'),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+}

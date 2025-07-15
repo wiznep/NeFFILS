@@ -1,0 +1,183 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/utils/colors/color.dart';
+import 'package:neffils/domain/models/industry/industry_view_model.dart';
+import 'package:neffils/presentation/widgets/industry_management/form_buttons.dart';
+import 'package:neffils/presentation/widgets/industry_management/form_progress_bar.dart';
+import 'package:neffils/presentation/widgets/recommendation/form/recommendation_documents/documents_form.dart';
+import 'package:neffils/presentation/widgets/recommendation/form/office_selection_form.dart';
+
+class AddRecommendationScreen extends StatefulWidget {
+  final IndustryView? selectedIndustry;
+
+  const AddRecommendationScreen({
+    Key? key,
+    this.selectedIndustry,
+  }) : super(key: key);
+
+  @override
+  _AddRecommendationScreenState createState() => _AddRecommendationScreenState();
+}
+
+class _AddRecommendationScreenState extends State<AddRecommendationScreen> {
+  int _currentStep = 1;
+  final int _totalSteps = 2;
+  final Map<String, dynamic> _formData = {};
+  bool _isNextEnabled = false;
+  bool _isSubmitting = false;
+  bool _isInitialized = false;
+
+  final List<String> _stepTitles = [
+    'Documents',
+    'Office Selection',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFormData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
+    });
+  }
+
+  void _initializeFormData() {
+    if (widget.selectedIndustry != null) {
+      _formData.addAll({
+        'industry_id': widget.selectedIndustry!.id,
+        'industry_name': widget.selectedIndustry!.displayName,
+      });
+    }
+  }
+
+  void _safeUpdateFormData(Map<String, dynamic> data) {
+    if (!mounted) return;
+    setState(() => _formData.addAll(data));
+  }
+
+  void _safeSetNextEnabled(bool enabled) {
+    if (!mounted) return;
+    setState(() => _isNextEnabled = enabled);
+  }
+
+  Future<void> _nextStep() async {
+    if (_currentStep == 1) {
+      // No need to submit documents here - they'll be submitted with the final form
+      // Just validate the current step
+      if (!_isNextEnabled) return;
+    }
+
+    if (_currentStep < _totalSteps) {
+      setState(() {
+        _currentStep++;
+        _isNextEnabled = false;
+      });
+    }
+  }
+
+  void _prevStep() {
+    if (_currentStep > 1) {
+      setState(() {
+        _currentStep--;
+        _isNextEnabled = true;
+      });
+    }
+  }
+
+  Future<void> _submitForm() async {
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      // Submit all data including documents
+      debugPrint('Form submitted: $_formData');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Application submitted successfully')),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Submission failed: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(
+        backgroundColor: appColors.formsubmit,
+        foregroundColor: Colors.white,
+        title: const Text('Apply for Recommendation'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            FormProgressBar(
+              currentStep: _currentStep,
+              totalSteps: _totalSteps,
+              stepTitles: _stepTitles,
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _buildStepContent(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            FormButtons(
+              currentStep: _currentStep,
+              totalSteps: _totalSteps,
+              isNextEnabled: _isNextEnabled && !_isSubmitting,
+              onBackPressed: _isSubmitting ? null : _prevStep,
+              onNextPressed: _isSubmitting ? null : _nextStep,
+              onSubmitPressed: _isSubmitting ? null : _submitForm,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepContent() {
+    switch (_currentStep) {
+      case 1:
+        return RecommendationDocumentsForm(
+          key: ValueKey(_formData['industry_id']),
+          initialData: _formData,
+          onChanged: _safeUpdateFormData,
+          onValidationChanged: _safeSetNextEnabled,
+          isIndustryPreselected: widget.selectedIndustry != null,
+        );
+      case 2:
+        return OfficeSelectionForm(
+          initialData: _formData,
+          onChanged: _safeUpdateFormData,
+          onValidationChanged: _safeSetNextEnabled,
+        );
+      default:
+        return Container();
+    }
+  }
+}

@@ -1,0 +1,63 @@
+import 'package:flutter/material.dart';
+import '../../../../../utils/colors/color.dart';
+
+class IndustryInfoStyles {
+  static final appColors = AppColors();
+
+  static const ddKeys = [
+    'industryType',
+    'industryCapital',
+    'ownProperty',
+    'country',
+    'province',
+    'district',
+    'municipality',
+    'wardNo',
+  ];
+
+  static const labels = {
+    'industryNameNepali': 'Industry Name in Nepali (उद्योगको नाम - नेपाली)',
+    'industryNameEnglish': 'Industry Name in English',
+    'industryContactNumber': 'Industry Contact Number',
+    'industryType': 'Industry Type',
+    'ownProperty': 'Own Property?',
+    'industryCapital': 'Industry Capital',
+    'totalProperty': 'Total Property (in sq. ft)',
+    'industryCapacity': 'Industry Capacity',
+    'marketsize': 'Market Size',
+    'numberOfEmployees': 'Number of Employees',
+    'intendedProducts': 'Intended Products to be Produced',
+    'country': 'Country (देश)',
+    'province': 'Province',
+    'district': 'District',
+    'municipality': 'Municipality',
+    'wardNo': 'Ward No.',
+    'houseNo': 'House No.',
+    'nearestLandmark': 'Nearest Landmark',
+    'gPlusCode': 'G-PLUS Code',
+  };
+
+  static const optionalFields = ['houseNo', 'nearestLandmark', 'gPlusCode'];
+
+  static InputDecoration inputDecoration({String? hintText, bool isRequired = true}) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(color: Colors.grey[600]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[400]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: AppColors.text_field, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[400]!),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+}

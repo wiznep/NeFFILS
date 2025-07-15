@@ -1,0 +1,122 @@
+import 'package:flutter/material.dart';
+import '../../../../utils/colors/color.dart';
+
+class LicenseDetailForm extends StatelessWidget {
+  final Function(Map<String, dynamic>) onChanged;
+
+  const LicenseDetailForm({Key? key, required this.onChanged}) : super(key: key);
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: appColors.white_black),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: appColors.formsubmit, width: 2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: appColors.dimwhite, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    );
+  }
+
+  Widget _buildLabelWithAsterisk(String label, {bool isRequired = false}) {
+    return RichText(
+      text: TextSpan(
+        children: [
+          if (isRequired)
+            const TextSpan(
+              text: '* ',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+          TextSpan(
+            text: label,
+            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadRow(String label, {bool isRequired = false}) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildLabelWithAsterisk(label, isRequired: isRequired),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton.icon(
+          onPressed: () {},
+          icon: const Icon(Icons.upload_file, size: 18),
+          label: const Text("Upload", style: TextStyle(fontWeight: FontWeight.w600)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: appColors.formsubmit,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        TextButton(
+          onPressed: () {},
+          style: TextButton.styleFrom(
+            side: const BorderSide(color: appColors.formsubmit), 
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            "Preview",
+            style: TextStyle(
+              color: appColors.formsubmit,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabelWithAsterisk("License Number ( लाइसेन्स नम्बर )", isRequired: true),
+        const SizedBox(height: 6),
+        TextFormField(decoration: _inputDecoration('Enter License Number')),
+
+        const SizedBox(height: 16),
+        _buildLabelWithAsterisk("Issue Date (जारी मिति)", isRequired: true),
+        const SizedBox(height: 6),
+        TextFormField(decoration: _inputDecoration('Enter Issue Date')),
+
+        const SizedBox(height: 16),
+        _buildLabelWithAsterisk("Expiry Date (म्याद समाप्ति मिति)", isRequired: true),
+        const SizedBox(height: 6),
+        TextFormField(decoration: _inputDecoration('Enter Expiry Date')),
+
+        const SizedBox(height: 16),
+        _buildUploadRow("License (लाइसेन्स)", isRequired: true),
+
+        const SizedBox(height: 16),
+        _buildUploadRow("Technical Proposal (प्राविधिक प्रस्ताव)", isRequired: true),
+
+        const SizedBox(height: 16),
+        _buildUploadRow("Registration Form (दर्ता फारम)", isRequired: true),
+
+        const SizedBox(height: 16),
+        _buildUploadRow("Letter of Administration (प्रा.लि.)", isRequired: false),
+
+        const SizedBox(height: 16),
+        _buildUploadRow("Proposed Industry Layout (प्रस्तावित उद्योग लेआउट)", isRequired: false),
+      ],
+    );
+  }
+}

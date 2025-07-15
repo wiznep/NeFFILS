@@ -1,0 +1,99 @@
+import 'package:flutter/material.dart';
+import 'package:neffils/utils/colors/color.dart';
+
+class CustomBottomNavBar extends StatelessWidget {
+  final int currentIndex;
+  final Function(int) onTap;
+
+  const CustomBottomNavBar({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: appColors.defaultwhite,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(
+            index: 0,
+            icon: Icons.home_outlined,
+            label: 'Home',
+          ),
+          _buildNavItem(
+            index: 1,
+            icon: Icons.design_services_outlined,
+            label: 'Services',
+          ),
+          _buildNavItem(
+              index: 2,
+              icon: Icons.notifications_outlined,
+              label: 'Notifications'
+          ),
+          _buildNavItem(
+            index: 3,
+            icon: Icons.settings_outlined,
+            label: 'Settings',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required int index,
+    required IconData icon,
+    String? label,
+  }) {
+    final bool isActive = currentIndex == index;
+    final Color activeColor = appColors.formsubmit;
+
+    return GestureDetector(
+      onTap: () => onTap(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: isActive ? 16 : 0, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? activeColor.withOpacity(0.3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 27,
+              color: activeColor,
+            ),
+            if (isActive && label != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: activeColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

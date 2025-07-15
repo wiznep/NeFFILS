@@ -1,0 +1,26 @@
+import '../../domain/models/userRegister_model.dart';
+import '../../domain/repositories/register_repository.dart';
+import '../services/register_auth_api_service.dart';
+
+class RegisterRepositoryImpl implements RegisterRepository {
+  final RegisterApiService apiService;
+
+  RegisterRepositoryImpl(this.apiService);
+
+  @override
+  Future<UserRegistration> register(
+      String fullName,
+      String username,
+      String phone,
+      String email,
+      String password,
+      ) {
+    return apiService.register(
+      fullName,
+      username,
+      phone,
+      email,
+      password,
+    );
+  }
+}
