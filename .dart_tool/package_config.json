@@ -171,7 +171,7 @@
     },
     {
       "name": "file_picker",
-      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker-8.3.7",
+      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker-10.2.0",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -207,13 +207,13 @@
     },
     {
       "name": "flex_color_picker",
-      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/flex_color_picker-3.6.0",
+      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/flex_color_picker-3.7.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
     {
       "name": "flex_seed_scheme",
-      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/flex_seed_scheme-3.4.1",
+      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/flex_seed_scheme-3.5.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -417,7 +417,7 @@
     },
     {
       "name": "html_editor_enhanced",
-      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/html_editor_enhanced-2.6.0",
+      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/html_editor_enhanced-2.7.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -534,12 +534,6 @@
       "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_testing-3.0.1",
       "packageUri": "lib/",
       "languageVersion": "3.2"
-    },
-    {
-      "name": "lints",
-      "rootUri": "file:///C:/Users/bibek/AppData/Local/Pub/Cache/hosted/pub.dev/lints-4.0.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.1"
     },
     {
       "name": "liquid_pull_to_refresh",
@@ -980,7 +974,7 @@
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2025-07-14T10:14:43.302151Z",
+  "generated": "2025-07-15T10:15:45.740918Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///C:/flutter",

@@ -157,8 +157,7 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
           }
           return DropdownOption(
             id: item['id'].toString(),
-            name:
-                item['name_en'] ??
+            name: item['name_en'] ??
                 item['name_np'] ??
                 item['name'] ??
                 item['id'].toString(),
@@ -271,8 +270,7 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
             initialInfo.municipality,
           );
           if (municipalityData != null) {
-            displayValues['municipality'] =
-                municipalityData['name_en'] ??
+            displayValues['municipality'] = municipalityData['name_en'] ??
                 municipalityData['name_np'] ??
                 initialInfo.municipality;
           }
@@ -347,10 +345,34 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
   }
 
   bool _validateForm() {
+    bool hasEmpty = false;
+    // Use selectedItems from the controller (returns List<DropdownItem<String>>)
+    final marketSizeSelected = marketSizeController.selectedItems;
+    // Extract just the values for debug/validation
+    final marketSizeValues =
+        marketSizeSelected.map((item) => item.value).toList();
     for (var key in labels.keys) {
       if (optionalFields.contains(key)) continue;
-      if (controllers[key]?.text.isEmpty ?? true) return false;
+      if (key == 'marketsize') {
+        if (marketSizeValues.isEmpty) {
+          hasEmpty = true;
+          // debugPrint('❌ Field "marketsize" is empty: "$marketSizeValues"');
+        }
+        continue;
+      }
+      if (controllers[key]?.text.isEmpty ?? true) {
+        hasEmpty = true;
+        // debugPrint('❌ Field "$key" is empty: "${controllers[key]?.text}"');
+      }
     }
+    // Print all controller values for debugging
+    debugPrint('--- Controller values ---');
+    controllers.forEach((k, v) {
+      debugPrint('$k: "${v.text}"');
+    });
+    debugPrint('marketsize: "$marketSizeValues"');
+    debugPrint('-------------------------');
+    if (hasEmpty) return false;
     return true;
   }
 
@@ -372,7 +394,7 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
         ownProperty: controllers['ownProperty']!.text == 'true',
         totalProperty: controllers['totalProperty']!.text,
         industryCapacity: controllers['industryCapacity']!.text,
-        marketSize: controllers['marketsize']!.text,
+        marketSize: marketSizeController.selectedItems.join(","),
         numberOfEmployees:
             int.tryParse(controllers['numberOfEmployees']!.text) ?? 0,
         intendedProducts: controllers['intendedProducts']!.text,
@@ -392,7 +414,7 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
       } else {
         final token = await _getToken();
         final response = await http.post(
-          Uri.parse('$_baseUrl/industry/industry/'),
+          Uri.parse('$_baseUrl/industry/industry/create/'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -488,30 +510,29 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
             hintText: 'Select ${labels[key]?.toLowerCase()}',
             isRequired: isRequired,
           ),
-          items:
-              (options[key] ?? [])
-                  .map(
-                    (e) => DropdownMenuItem(
-                      value: e.id,
-                      child: Text(e.name, style: getRegularStyle()),
+          items: (options[key] ?? [])
+              .map((e) => DropdownMenuItem(
+                    value: e.id,
+                    child: Text(
+                      e.name,
+                      style: getRegularStyle(),
                     ),
-                  )
-                  .toList(),
+                  ))
+              .toList(),
           onChanged: (value) async {
             if (value == null) return;
-            setState(() {
-              controllers[key]!.text = value;
-              displayValues.remove(key);
-              if (key == 'country') {
+            controllers[key]!.text = value;
+            debugPrint('Dropdown $key set to: $value');
+            displayValues.remove(key);
+            if (key == 'country') {
+              setState(() {
                 controllers['province']!.text = '';
                 controllers['district']!.text = '';
                 controllers['municipality']!.text = '';
                 options['province'] = [];
                 options['district'] = [];
                 options['municipality'] = [];
-              }
-            });
-            if (key == 'country') {
+              });
               setState(() {
                 isLoading = true;
               });
@@ -522,27 +543,27 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
               setState(() {
                 isLoading = false;
               });
-            }
-            if (key == 'province') {
+            } else if (key == 'province') {
               setState(() {
+                controllers['district']!.text = '';
+                controllers['municipality']!.text = '';
+                options['district'] = [];
+                options['municipality'] = [];
                 isLoading = true;
               });
-              controllers['district']!.text = '';
-              controllers['municipality']!.text = '';
               options['district'] = await _fetchOptions(
                 'nepal-map/district/',
                 params: '?province=$value',
               );
-              options['municipality'] = [];
               setState(() {
                 isLoading = false;
               });
-            }
-            if (key == 'district') {
+            } else if (key == 'district') {
               setState(() {
+                controllers['municipality']!.text = '';
+                options['municipality'] = [];
                 isLoading = true;
               });
-              controllers['municipality']!.text = '';
               options['municipality'] = await _fetchOptions(
                 'nepal-map/local-levels/',
                 params: '?district=$value',
@@ -550,8 +571,13 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
               setState(() {
                 isLoading = false;
               });
+            } else {
+              setState(() {});
             }
             widget.onValidationChanged(_validateForm());
+            controllers.forEach((k, v) {
+              debugPrint('Controller $k: ${v.text}');
+            });
           },
           icon: const Icon(Icons.arrow_drop_down, size: 24),
           iconEnabledColor: Colors.grey[700],
@@ -684,50 +710,50 @@ class IndustryInfoFormState extends State<IndustryInfoForm> {
     return isLoading && options.isEmpty
         ? const IndustryInfoShimmer()
         : SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildField('industryNameNepali'),
-              const SizedBox(height: 16),
-              _buildField('industryNameEnglish'),
-              const SizedBox(height: 16),
-              _buildField('industryContactNumber'),
-              const SizedBox(height: 16),
-              _buildField('industryType'),
-              const SizedBox(height: 16),
-              _buildField('ownProperty'),
-              const SizedBox(height: 16),
-              _buildField('industryCapital'),
-              const SizedBox(height: 16),
-              _buildField('totalProperty'),
-              const SizedBox(height: 16),
-              _buildField('industryCapacity'),
-              const SizedBox(height: 16),
-              _buildMarketSizeField('marketsize'),
-              const SizedBox(height: 16),
-              _buildField('numberOfEmployees'),
-              const SizedBox(height: 16),
-              _buildField('intendedProducts'),
-              _buildSectionHeader('Industry Address (उद्योगको ठेगाना)'),
-              _buildField('country'),
-              const SizedBox(height: 16),
-              _buildField('province'),
-              const SizedBox(height: 16),
-              _buildField('district'),
-              const SizedBox(height: 16),
-              _buildField('municipality'),
-              const SizedBox(height: 16),
-              _buildField('wardNo'),
-              const SizedBox(height: 16),
-              _buildField('houseNo'),
-              const SizedBox(height: 16),
-              _buildField('gPlusCode'),
-              const SizedBox(height: 16),
-              _buildField('nearestLandmark'),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildField('industryNameNepali'),
+                const SizedBox(height: 16),
+                _buildField('industryNameEnglish'),
+                const SizedBox(height: 16),
+                _buildField('industryContactNumber'),
+                const SizedBox(height: 16),
+                _buildField('industryType'),
+                const SizedBox(height: 16),
+                _buildField('ownProperty'),
+                const SizedBox(height: 16),
+                _buildField('industryCapital'),
+                const SizedBox(height: 16),
+                _buildField('totalProperty'),
+                const SizedBox(height: 16),
+                _buildField('industryCapacity'),
+                const SizedBox(height: 16),
+                _buildMarketSizeField('marketsize'),
+                const SizedBox(height: 16),
+                _buildField('numberOfEmployees'),
+                const SizedBox(height: 16),
+                _buildField('intendedProducts'),
+                _buildSectionHeader('Industry Address (उद्योगको ठेगाना)'),
+                _buildField('country'),
+                const SizedBox(height: 16),
+                _buildField('province'),
+                const SizedBox(height: 16),
+                _buildField('district'),
+                const SizedBox(height: 16),
+                _buildField('municipality'),
+                const SizedBox(height: 16),
+                _buildField('wardNo'),
+                const SizedBox(height: 16),
+                _buildField('houseNo'),
+                const SizedBox(height: 16),
+                _buildField('gPlusCode'),
+                const SizedBox(height: 16),
+                _buildField('nearestLandmark'),
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
   }
 
   @override
