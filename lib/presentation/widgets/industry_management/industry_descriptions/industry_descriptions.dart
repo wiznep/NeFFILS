@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../domain/models/industry/industry_optdetails.dart';
 import '../../../../domain/repositories/industry/industry_view_repository.dart';
@@ -22,10 +23,13 @@ class IndustryDescriptionForm extends StatefulWidget {
 }
 
 class IndustryDescriptionFormState extends State<IndustryDescriptionForm> {
-  final TextEditingController _machineryController = TextEditingController();
-  final TextEditingController _rawMaterialsController = TextEditingController();
-  final TextEditingController _cleanManagementController = TextEditingController();
-  final TextEditingController _technicalSkillsController = TextEditingController();
+  final HtmlEditorController _machineryHtmlController = HtmlEditorController();
+  final HtmlEditorController _rawMaterialsHtmlController =
+      HtmlEditorController();
+  final HtmlEditorController _cleanManagementHtmlController =
+      HtmlEditorController();
+  final HtmlEditorController _technicalSkillsHtmlController =
+      HtmlEditorController();
 
   bool _isSubmitting = false;
   bool _isLoading = true;
@@ -42,42 +46,10 @@ class IndustryDescriptionFormState extends State<IndustryDescriptionForm> {
   void initState() {
     super.initState();
     _loadInitialData();
-
-    _machineryController.addListener(() {
-      setState(() {
-        _machineryChars = _machineryController.text.length;
-      });
-      _validateForm();
-    });
-
-    _rawMaterialsController.addListener(() {
-      setState(() {
-        _rawMaterialsChars = _rawMaterialsController.text.length;
-      });
-      _validateForm();
-    });
-
-    _cleanManagementController.addListener(() {
-      setState(() {
-        _cleanManagementChars = _cleanManagementController.text.length;
-      });
-      _validateForm();
-    });
-
-    _technicalSkillsController.addListener(() {
-      setState(() {
-        _technicalSkillsChars = _technicalSkillsController.text.length;
-      });
-      _validateForm();
-    });
   }
 
   @override
   void dispose() {
-    _machineryController.dispose();
-    _rawMaterialsController.dispose();
-    _cleanManagementController.dispose();
-    _technicalSkillsController.dispose();
     super.dispose();
   }
 
@@ -93,21 +65,18 @@ class IndustryDescriptionFormState extends State<IndustryDescriptionForm> {
   Future<void> _loadInitialData() async {
     try {
       final data = await _repository.getOperationalInfo(widget.industryId);
-
+      // Set initial HTML values for editors
+      _machineryHtmlController.setText(data.machineryDetails);
+      _rawMaterialsHtmlController.setText(data.rawMaterialsDetails);
+      _cleanManagementHtmlController.setText(data.cleanManagement);
+      _technicalSkillsHtmlController.setText(data.technicalSkills);
       setState(() {
-        _machineryController.text = _stripHtml(data.machineryDetails ?? '');
-        _rawMaterialsController.text = _stripHtml(data.rawMaterialsDetails ?? '');
-        _cleanManagementController.text = _stripHtml(data.cleanManagement ?? '');
-        _technicalSkillsController.text = _stripHtml(data.technicalSkills ?? '');
-
-        _machineryChars = _machineryController.text.length;
-        _rawMaterialsChars = _rawMaterialsController.text.length;
-        _cleanManagementChars = _cleanManagementController.text.length;
-        _technicalSkillsChars = _technicalSkillsController.text.length;
+        _machineryChars = _stripHtml(data.machineryDetails).length;
+        _rawMaterialsChars = _stripHtml(data.rawMaterialsDetails).length;
+        _cleanManagementChars = _stripHtml(data.cleanManagement).length;
+        _technicalSkillsChars = _stripHtml(data.technicalSkills).length;
       });
-
       _validateForm();
-
     } catch (e) {
       _showErrorSnackbar('Error loading operational data: $e');
     } finally {
@@ -118,31 +87,33 @@ class IndustryDescriptionFormState extends State<IndustryDescriptionForm> {
   }
 
   void _validateForm() {
-    final isValid =
-        _machineryController.text.isNotEmpty &&
-            _rawMaterialsController.text.isNotEmpty &&
-            _cleanManagementController.text.isNotEmpty &&
-            _technicalSkillsController.text.isNotEmpty;
-
-    widget.onValidationChanged(isValid);
+    Future.wait([
+      _machineryHtmlController.getText(),
+      _rawMaterialsHtmlController.getText(),
+      _cleanManagementHtmlController.getText(),
+      _technicalSkillsHtmlController.getText(),
+    ]).then((values) {
+      final isValid = values.every((text) => _stripHtml(text).isNotEmpty);
+      widget.onValidationChanged(isValid);
+    });
   }
 
   Future<void> _submitForm() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-
     setState(() => _isSubmitting = true);
-
     try {
+      final machineryDetails = await _machineryHtmlController.getText();
+      final rawMaterialsDetails = await _rawMaterialsHtmlController.getText();
+      final cleanManagement = await _cleanManagementHtmlController.getText();
+      final technicalSkills = await _technicalSkillsHtmlController.getText();
       final operationalInfo = IndustryOperationalInfo(
-        machineryDetails: _machineryController.text.trim(),
-        rawMaterialsDetails: _rawMaterialsController.text.trim(),
-        cleanManagement: _cleanManagementController.text.trim(),
-        technicalSkills: _technicalSkillsController.text.trim(),
+        machineryDetails: machineryDetails,
+        rawMaterialsDetails: rawMaterialsDetails,
+        cleanManagement: cleanManagement,
+        technicalSkills: technicalSkills,
       );
-
-      await _repository.updateOperationalInfo(widget.industryId, operationalInfo);
+      await _repository.updateOperationalInfo(
+          widget.industryId, operationalInfo);
       widget.onSubmitted();
-
     } catch (e) {
       _showErrorSnackbar('Failed to save operational data: ${e.toString()}');
     } finally {
@@ -161,36 +132,11 @@ class IndustryDescriptionFormState extends State<IndustryDescriptionForm> {
     );
   }
 
-  InputDecoration _buildInputDecoration(String label, int currentChars, {bool isRequired = true}) {
-    return InputDecoration(
-      labelText: isRequired ? '$label*' : label,
-      labelStyle: TextStyle(color: Colors.grey[600]),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey[400]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: appColors.text_field, width: 1.5),
-      ),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      errorStyle: TextStyle(color: Colors.red[700]),
-      suffixText: '$currentChars/$maxCharacters',
-      suffixStyle: TextStyle(
-        color: currentChars > maxCharacters ? Colors.red : Colors.grey,
-        fontSize: 12,
-      ),
-    );
-  }
-
   Widget _buildTextFormField({
-    required TextEditingController controller,
+    required HtmlEditorController controller,
     required String label,
-    required String? Function(String?) validator,
-    required int currentChars,
-    int maxLines = 3,
+    int currentChars = 0,
+    // removed unused maxLines parameter
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,13 +150,23 @@ class IndustryDescriptionFormState extends State<IndustryDescriptionForm> {
           ),
         ),
         const SizedBox(height: 8),
-        TextFormField(
+        HtmlEditor(
           controller: controller,
-          decoration: _buildInputDecoration('Enter details', currentChars),
-          validator: validator,
-          maxLines: maxLines,
-          maxLength: maxCharacters,
-          textInputAction: TextInputAction.next,
+          htmlEditorOptions: HtmlEditorOptions(
+            hint: 'Enter $label',
+            shouldEnsureVisible: true,
+          ),
+          htmlToolbarOptions: HtmlToolbarOptions(
+            defaultToolbarButtons: [
+              FontButtons(),
+              ColorButtons(),
+              ListButtons(),
+              ParagraphButtons(),
+              InsertButtons(),
+              OtherButtons(),
+            ],
+          ),
+          otherOptions: OtherOptions(height: 200),
         ),
         const SizedBox(height: 8),
       ],
@@ -259,60 +215,24 @@ class IndustryDescriptionFormState extends State<IndustryDescriptionForm> {
               )
             else ...[
               _buildTextFormField(
-                controller: _machineryController,
+                controller: _machineryHtmlController,
                 label: 'Machinery Details',
                 currentChars: _machineryChars,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Machinery details are required';
-                  }
-                  if (value!.length > maxCharacters) {
-                    return 'Exceeds maximum character limit';
-                  }
-                  return null;
-                },
               ),
               _buildTextFormField(
-                controller: _rawMaterialsController,
+                controller: _rawMaterialsHtmlController,
                 label: 'Raw Materials Details',
                 currentChars: _rawMaterialsChars,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Raw materials details are required';
-                  }
-                  if (value!.length > maxCharacters) {
-                    return 'Exceeds maximum character limit';
-                  }
-                  return null;
-                },
               ),
               _buildTextFormField(
-                controller: _cleanManagementController,
+                controller: _cleanManagementHtmlController,
                 label: 'Clean Management',
                 currentChars: _cleanManagementChars,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Clean management details are required';
-                  }
-                  if (value!.length > maxCharacters) {
-                    return 'Exceeds maximum character limit';
-                  }
-                  return null;
-                },
               ),
               _buildTextFormField(
-                controller: _technicalSkillsController,
+                controller: _technicalSkillsHtmlController,
                 label: 'Technical Skills',
                 currentChars: _technicalSkillsChars,
-                validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Technical skills details are required';
-                  }
-                  if (value!.length > maxCharacters) {
-                    return 'Exceeds maximum character limit';
-                  }
-                  return null;
-                },
               ),
             ],
           ],
